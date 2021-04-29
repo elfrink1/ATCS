@@ -1,0 +1,9 @@
+name: acts2
+channels:
+  - conda-forge
+dependencies:
+  - pytorch
+  - cudatoolkit=10.2
+  - pytorch-lightning
+  - huggingface::transformers
+  - huggingface::datasets
