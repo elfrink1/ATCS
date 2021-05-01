@@ -1,4 +1,4 @@
-name: acts2
+name: atcs2
 channels:
   - conda-forge
 dependencies:
