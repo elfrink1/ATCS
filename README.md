@@ -2,7 +2,7 @@
 Research project: Mitigating Label Mismatches across Datasets using Meta-Learning (document classification)
 
 ## Installation
-The environment can be created with conda env create -f acts2.yml
+The environment can be created with conda env create -f atcs2.yml
 
 If there is difficulty with installing the huggingface datasets, do it manually with conda install -c huggingface -c conda-forge datasets
 
@@ -17,7 +17,7 @@ If your functionalities are done, add them to main and make them callable from t
 
 Furthermore, maintain general hygiene:
 - Define classes (e,g. lightning models), functionalities (e.g. cleaning the dataset), and experiments (e.g. finetune bert) in separate files.
-- Update acts2.yml file if you install new libraries
+- Update atcs2.yml file if you install new libraries
 - Separate functions as much as possible
 - Comment your code!!1!
 - stick to the styleguide https://pep8.org/
