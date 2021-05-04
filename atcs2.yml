@@ -1,5 +1,6 @@
 name: atcs2
 channels:
+  - pytorch
   - conda-forge
 dependencies:
   - pytorch
@@ -7,3 +8,4 @@ dependencies:
   - pytorch-lightning
   - huggingface::transformers
   - huggingface::datasets
+  - kaggle
