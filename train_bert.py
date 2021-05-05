@@ -20,10 +20,13 @@ def train_bert(loader, conf):
     trainer.logger._default_hp_metric = None
 
     pl.seed_everything(conf.seed)
-    model = BERTTraniner(conf.name, model_hparams={"num_classes": 10}, optimizer_name="Adam",
-                         optimizer_hparams={"lr": 1e-3}, conf=conf)
+    model = BERTTraniner(conf.name, model_hparams={}, optimizer_name=conf.optimizer,
+                         optimizer_hparams={"lr": conf.lr}, conf=conf)
 
     trainer.fit(model, loader['train'])
+    test_result = trainer.test(model, loader['test'])
+
+    return model, test_result
 
         
 if __name__ == "__main__":
