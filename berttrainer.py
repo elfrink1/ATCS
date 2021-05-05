@@ -8,12 +8,8 @@ class BERTTraniner(pl.LightningModule):
     def __init__(self, model_name, model_hparams, optimizer_name, optimizer_hparams, conf):
         super().__init__()
         self.save_hyperparameters()
-
         self.model = BertClassifier(conf)
-
         self.loss_module = nn.CrossEntropyLoss()
-
-        print("Trainer init done")
 
     def forward(self, batch):
         return self.model(batch)
