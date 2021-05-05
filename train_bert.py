@@ -14,7 +14,7 @@ def train_bert(loader, conf):
                          checkpoint_callback=ModelCheckpoint(save_weights_only=True, mode="max"),
                          gpus=1 if "gpu" in str(conf.device) else 0,
                          max_epochs=conf.max_epochs,                                            
-                         progress_bar_refresh_rate=1) 
+                         progress_bar_refresh_rate= 1 if conf.progress_bar else 0) 
     
     trainer.logger._log_graph = True
     trainer.logger._default_hp_metric = None
@@ -31,6 +31,7 @@ def train_bert(loader, conf):
         
 if __name__ == "__main__":
     conf = get_args()
+    print(conf)
 
     print("Training ", conf.name, "on", conf.dataset)
 

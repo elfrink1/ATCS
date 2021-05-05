@@ -56,6 +56,8 @@ def get_args():
                         choices=["cpu", "gpu"], help="the device to use")
     parser.add_argument("--seed", type=int, default=arg_defaults["seed"],
                         help="the random seed used by pytorch lightning")
+    parser.add_argument("--progress_bar", action="store_true", default=False,
+                        help="show the progress bar")
     
     
     args = parser.parse_args()
