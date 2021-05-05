@@ -7,11 +7,11 @@ class BertClassifier(nn.Module):
         super(BertClassifier, self).__init__()
         self.bert = BertModel.from_pretrained("bert-base-uncased")
         self.nr_layers = 11
-        self.finetune_layers = [str(self.nr_layers - diff) for diff in range(conf.finetune_layers)] if conf.finetune_layers > 0 else []
-        self.finetune_layers.append("pooler")
+        self.finetuned_layers = [str(self.nr_layers - diff) for diff in range(conf.finetune_layers)] if conf.finetuned_layers > 0 else []
+        self.finetuned_layers.append("pooler")
 
         for n, p in self.bert.named_parameters():
-            if True in [ftl in n for ftl in self.finetune_layers]:
+            if True in [ftl in n for ftl in self.finetuned_layers]:
                 p.requires_grad = True
             else: 
                 p.requires_grad = False

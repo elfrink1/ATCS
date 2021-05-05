@@ -1,5 +1,10 @@
 import torch
+from transformers import BertTokenizer
 from datasets import load_dataset
+
+tokenizers = {
+    "BERT" : BertTokenizer.from_pretrained('bert-base-uncased')
+}
 
 class Dataset():
     def __init__(self, conf):
@@ -17,9 +22,9 @@ class Dataset():
             Splits in train (160682), validation (10043) and test (30128). Every sample has the following features:
             `['authors', 'category', 'category_num', 'date', 'headline', 'link', 'short_description']` """
         dataset = load_dataset("Fraser/news-category-dataset")
-        self.train = self.process_hp(dataset["train"], conf.tokenizer)
-        self.val = self.process_hp(dataset["validation"], conf.tokenizer)
-        self.test = self.process_hp(dataset["test"], conf.tokenizer)
+        self.train = self.process_hp(dataset["train"], tokenizers[conf.tokenizer])
+        self.val = self.process_hp(dataset["validation"], tokenizers[conf.tokenizer])
+        self.test = self.process_hp(dataset["test"], tokenizers[conf.tokenizer])
 
     def process_hp(self, data, tokenizer):
         """ Extracts the headlines and labels from the HuffPost dataset.
@@ -33,9 +38,9 @@ class Dataset():
         """ Loads the AG news dataset from [Hugging Face](https://huggingface.co/datasets/ag_news) 
             Splits in train (120000) and test (7600). Every sample has the following features: `['label', 'text']` """
         dataset = load_dataset("ag_news")
-        self.train = self.process_ag(dataset["train"], conf.tokenizer)
+        self.train = self.process_ag(dataset["train"], tokenizers[conf.tokenizer])
         self.val = None
-        self.test = self.process_ag(dataset["test"], conf.tokenizer)
+        self.test = self.process_ag(dataset["test"], tokenizers[conf.tokenizer])
 
     def process_ag(self, data, tokenizer):
         """ Extracts the headlines and labels from the AG news dataset. 
@@ -52,14 +57,14 @@ class Dataset():
         l2i = {'entertainment':0, 'business':1, 'politics':2, 'sport':3, 'tech':4}
         # first row are colum names: ['ArticleId' 'Text' 'Category']
         train_data = [line.replace("\n", "").split(",") for line in open('Data/BBC News Train.csv')][1:]
-        self.train = self.process_bbc([[ex[1][:512], l2i[ex[2]]] for ex in train_data], conf.tokenizer)
+        self.train = self.process_bbc([[ex[1][:512], l2i[ex[2]]] for ex in train_data], tokenizers[conf.tokenizer])
         self.val = None
         
         # first row are colum names: ['ArticleId' 'Text']
         test_ex = [line.replace("\n", "").split(",") for line in open('Data/BBC News Test.csv')][1:]
         # first row are colum names: ['ArticleId' 'Category']
         test_labels = [line.replace("\n", "").split(",") for line in open('Data/BBC News Sample Solution.csv')][1:]
-        self.test = self.process_bbc([[ex[1][:512], l2i[label[1]]] for ex, label in zip(test_ex, test_labels) if ex[0] == label[0]], conf.tokenizer)
+        self.test = self.process_bbc([[ex[1][:512], l2i[label[1]]] for ex, label in zip(test_ex, test_labels) if ex[0] == label[0]], tokenizers[conf.tokenizer])
 
         assert len(self.test) == len(test_labels)
         "The BBC test datafiles were corrupted!"
