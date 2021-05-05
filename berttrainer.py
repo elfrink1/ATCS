@@ -15,7 +15,10 @@ class BERTTraniner(pl.LightningModule):
         return self.model(batch)
 
     def configure_optimizers(self):
-        optimizer = optim.SGD(self.parameters(), **self.hparams.optimizer_hparams)
+        if self.hparams.optimizer_name == "Adam":
+            optimizer = optim.Adam(self.parameters(), **self.hparams.optimizer_hparams)
+        elif self.hparams.optimizer_name == "SGD":
+            optimizer = optim.SGD(self.parameters(), **self.hparams.optimizer_hparams)
         scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100,150], gamma=0.1)
 
         return [optimizer], [scheduler]
