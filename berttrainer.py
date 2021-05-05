@@ -25,7 +25,6 @@ class BERTTraniner(pl.LightningModule):
         return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_idx):
-        print("training")
         out_ = self.model(batch["txt"])
         loss = self.loss_module(out_, batch["label"])
         acc = (out_.argmax(dim=-1) == batch["label"]).float().mean()
