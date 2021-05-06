@@ -11,7 +11,8 @@ from bertutil import get_args
 
 def train_bert(loader, conf):
     trainer = pl.Trainer(default_root_dir=os.path.join(conf.path, conf.name),
-                         checkpoint_callback=ModelCheckpoint(save_weights_only=True, mode="max"),
+                         checkpoint_callback = ModelCheckpoint(save_weights_only=True, mode="max", monitor="train_acc" if loader['val'] == None 
+                                                                                                            else "val_acc"),
                          gpus=1 if "gpu" in str(conf.device) else 0,
                          max_epochs=conf.max_epochs,                                            
                          progress_bar_refresh_rate= 1 if conf.progress_bar else 0) 
@@ -22,8 +23,12 @@ def train_bert(loader, conf):
     pl.seed_everything(conf.seed)
     model = BERTTraniner(conf.name, model_hparams={}, optimizer_name=conf.optimizer,
                          optimizer_hparams={"lr": conf.lr}, conf=conf)
-
-    trainer.fit(model, loader['train'])
+    
+    if loader['val'] != None:
+        trainer.fit(model, loader['train'], loader['val'])
+    else:
+        trainer.fit(model, loader['train'])
+    
     test_result = trainer.test(model, loader['test'])
 
     return model, test_result
@@ -42,4 +47,5 @@ if __name__ == "__main__":
         'test'  : data.DataLoader(dataset.test, batch_size=conf.batch_size, shuffle=False, drop_last=False, num_workers=4) if dataset.test != None else None
     }
 
-    out = train_bert(loader, conf)
+    model, results = train_bert(loader, conf)
+    print("Results:", results)

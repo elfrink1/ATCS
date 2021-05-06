@@ -32,9 +32,14 @@ class BERTTraniner(pl.LightningModule):
         self.log('train_loss', loss)
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        out_ = self.model(batch["txt"])
+        acc = (out_.argmax(dim=-1) == batch["label"]).float().mean()
+        self.log('val_acc', acc)
+
     def test_step(self, batch, batch_idx):
         out_ = self.model(batch["txt"])
-        acc = (batch["label"] == out_).float().mean()
+        acc = (out_.argmax(dim=-1) == batch["label"]).float().mean()
         self.log('test_acc', acc)
 
 
