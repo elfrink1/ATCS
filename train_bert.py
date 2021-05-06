@@ -10,7 +10,7 @@ from berttrainer import BERTTraniner
 from bertutil import get_args
 
 def train_bert(loader, conf):
-    trainer = pl.Trainer(default_root_dir=os.path.join(conf.path, conf.name),
+    trainer = pl.Trainer(default_root_dir=os.path.join(conf.path, conf.dataset, conf.name),
                          checkpoint_callback = ModelCheckpoint(save_weights_only=True, mode="max", monitor="train_acc" if loader['val'] == None 
                                                                                                             else "val_acc"),
                          gpus=1 if "gpu" in str(conf.device) else 0,
@@ -36,9 +36,9 @@ def train_bert(loader, conf):
         
 if __name__ == "__main__":
     conf = get_args()
+    print("-------------- CONF ---------------")
     print(conf)
-
-    print("Training ", conf.name, "on", conf.dataset)
+    print("-----------------------------------")
 
     dataset = Dataset(conf)
     loader = {
