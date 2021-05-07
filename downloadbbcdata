@@ -14,4 +14,4 @@ mkdir -p BBC/Test
 
 mv BBC\ News\ Train.csv BBC/Train
 mv BBC\ News\ Test.csv BBC/Test
-mv BBC\ News\ Sample\ Solution.csv BBC/Train
+mv BBC\ News\ Sample\ Solution.csv BBC/Test
