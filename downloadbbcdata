@@ -8,3 +8,10 @@ mv learn-ai-bbc.zip Data/
 cd Data/
 unzip learn-ai-bbc.zip
 rm learn-ai-bbc.zip
+
+mkdir -p BBC/Train
+mkdir -p BBC/Test
+
+mv BBC\ News\ Train.csv BBC/Train
+mv BBC\ News\ Test.csv BBC/Test
+mv BBC\ News\ Sample\ Solution.csv BBC/Train
