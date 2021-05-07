@@ -19,7 +19,7 @@ from argparse import ArgumentParser
 
 
 arg_defaults = {
-    "path" : "models",
+    "path" : "models/bert",
     "optimizer" : "Adam",
     "lr" : 0.1,
     "max_epochs" : 100,
