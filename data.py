@@ -56,14 +56,14 @@ class Dataset():
             Splits in train (1490) and test (735)."""
         l2i = {'entertainment':0, 'business':1, 'politics':2, 'sport':3, 'tech':4}
         # first row are colum names: ['ArticleId' 'Text' 'Category']
-        train_data = [line.replace("\n", "").split(",") for line in open('Data/BBC News Train.csv')][1:]
+        train_data = [line.replace("\n", "").split(",") for line in open('Data/BBC/Train/BBC News Train.csv')][1:]
         self.train = self.process_bbc([[ex[1][:512], l2i[ex[2]]] for ex in train_data], tokenizers[conf.tokenizer])
         self.val = None
         
         # first row are colum names: ['ArticleId' 'Text']
-        test_ex = [line.replace("\n", "").split(",") for line in open('Data/BBC News Test.csv')][1:]
+        test_ex = [line.replace("\n", "").split(",") for line in open('Data/BBC/Test/BBC News Test.csv')][1:]
         # first row are colum names: ['ArticleId' 'Category']
-        test_labels = [line.replace("\n", "").split(",") for line in open('Data/BBC News Sample Solution.csv')][1:]
+        test_labels = [line.replace("\n", "").split(",") for line in open('Data/BBC/Test/BBC News Sample Solution.csv')][1:]
         self.test = self.process_bbc([[ex[1][:512], l2i[label[1]]] for ex, label in zip(test_ex, test_labels) if ex[0] == label[0]], tokenizers[conf.tokenizer])
 
         assert len(self.test) == len(test_labels)
