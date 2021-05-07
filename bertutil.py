@@ -27,7 +27,8 @@ arg_defaults = {
     "tokenizer" : "BERT",
     "batch_size" : 64,
     "device" : "gpu",
-    "seed" : 20
+    "seed" : 20,
+    "max_text_length": -1
 }
 
 def get_args():
@@ -58,6 +59,8 @@ def get_args():
                         help="the random seed used by pytorch lightning")
     parser.add_argument("--progress_bar", action="store_true", default=False,
                         help="show the progress bar")
+    parser.add_argument("--max_text_length", type=int, default=arg_defaults["max_text_length"],
+                        help="the max text length in characters (-1: no limit)")
     
     
     args = parser.parse_args()
