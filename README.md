@@ -37,3 +37,16 @@ Link: https://huggingface.co/datasets/newsgroup
 
 BBC News classification: A small dataset on classification of BBC news articles. 
 Link: https://www.kaggle.com/c/learn-ai-bbc 
+
+## BERT
+The [BERT-base model from Hugging Face](https://huggingface.co/bert-base-uncased) can finetuned with a single fully connected layer on top on a given dataset. The performance of this model will serve as a baseline for the Meta-Learning and Multitask Learning models.
+### Usage
+The `train_bert.py` can be called as follows:
+
+``python train_bert.py [-h] [--path PATH] [--optimizer {Adam,SGD}] [--lr LR] [--max_epochs MAX_EPOCHS] [--finetuned_layers FINETUNED_LAYERS] [--tokenizer {BERT}] [--batch-size BATCH_SIZE] [--device {cpu,gpu}] [--seed SEED]
+                     [--progress_bar] [--max_text_length MAX_TEXT_LENGTH]
+                     name {hp,ag,bbc} nr_classes``
+
+By default the model will use the Adam optimizer to learn only the fully connected layer for 100 epochs with a constant learning rate of `0.001`. Also, by default there is no limit on the text lenght, but the BERT model does not work with text longer than `512` characters.
+
+For more information run `python train_bert.py -h`.
