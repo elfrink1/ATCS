@@ -21,7 +21,7 @@ from argparse import ArgumentParser
 arg_defaults = {
     "path" : "models/bert",
     "optimizer" : "Adam",
-    "lr" : 0.1,
+    "lr" : 0.001,
     "max_epochs" : 100,
     "finetuned_layers" : 0,
     "tokenizer" : "BERT",
