@@ -16,10 +16,10 @@ def get_args():
     parser = ArgumentParser(description="BERT baseline training")
     parser.add_argument("name", type=str,
                         help="name of the model")
-    parser.add_argument("dataset", type=str, choices=["hp", "ag", "bbc"],
-                        help="the dataset used for training")
-    parser.add_argument("nr_classes", type=int,
-                        help="the number of classes of the dataset")
+    # parser.add_argument("dataset", type=str, choices=["hp", "ag", "bbc"],
+    #                     help="the dataset used for training")
+    # parser.add_argument("nr_classes", type=int,
+    #                     help="the number of classes of the dataset")
     parser.add_argument("--path", type=str, default=arg_defaults["path"],
                         help="the path to save the model checkpoints and logs")
     parser.add_argument("--optimizer", type=str, default=arg_defaults["optimizer"],
