@@ -49,7 +49,7 @@ class MultitaskDataset():
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
 
 
-    def load_bcc(self, conf):
+    def load_bbc(self, conf):
         """ Loads the BBC news dataset from [Kaggle](https://www.kaggle.com/c/learn-ai-bbc)
             This dataset has to be downloaded manually using the `downloadbbcdata` file.
             Splits in train (1490) and test (735)."""
@@ -78,7 +78,21 @@ class MultitaskDataset():
         labels = torch.LongTensor([b[1] for b in data])
 
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
-        
+
+
+    # See newsgroup.txt for info
+    def load_ng(self, conf):
+        dataset = load_dataset("newsgroup")
+        train = None
+        val = None
+        test = None
+        return train, val, test
+
+
+    def process_ng(self, data, tokenizer):
+        pass
+
+    
 
     def load_datasets(self, conf):
         self.train = []
