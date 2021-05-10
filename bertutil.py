@@ -1,25 +1,5 @@
 from argparse import ArgumentParser
 
-# class Config(object):
-#     # Temporary class to store the config. Will later be replaced by a 
-#     # argument based config
-#     def __init__(self):
-#         self.name = "bertplusmlp"
-#         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-#         self.batch_size = 64
-#         self.lr = 0.1
-#         self.dataset = "bbc"
-#         self.max_epochs = 100
-#         self.finetune_layers = 1
-#         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-#         self.seed = 20
-#         self.optimizer = "SGD"
-#         self.CHECKPOINT_PATH = "models"
-#         self.nr_classes = 41
-
-help_text_default = " (default: {})"
-
-
 arg_defaults = {
     "path" : "models/bert",
     "optimizer" : "Adam",
@@ -35,6 +15,7 @@ arg_defaults = {
 
 def get_args():
     parser = ArgumentParser(description="BERT baseline training")
+    help_text_default = " (default: {})"
     parser.add_argument("name", type=str, 
                         help="name of the model")
     parser.add_argument("dataset", type=str, choices=["hp", "ag", "bbc"],
