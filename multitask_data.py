@@ -20,6 +20,7 @@ class MultitaskDataset():
         test = self.process_hp(dataset["test"], tokenizers[conf.tokenizer])
         return train, val, test
 
+
     def process_hp(self, data, tokenizer):
         """ Extracts the headlines and labels from the HuffPost dataset.
             The description is empty for some samples, which is why it is not returned."""
@@ -27,6 +28,7 @@ class MultitaskDataset():
         # descr = tokenizer(batch["short_description"])["input_ids"] ## is sometimes empty, which torch does not like
         labels = torch.LongTensor(data["category_num"])
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
+
 
     def load_ag(self, conf):
         """ Loads the AG news dataset from [Hugging Face](https://huggingface.co/datasets/ag_news)
@@ -37,6 +39,7 @@ class MultitaskDataset():
         test = self.process_ag(dataset["test"], tokenizers[conf.tokenizer])
         return train, val, test
 
+
     def process_ag(self, data, tokenizer):
         """ Extracts the headlines and labels from the AG news dataset.
             The headlines contain '\\' characters in place of newlines. """
@@ -44,6 +47,7 @@ class MultitaskDataset():
         headlines = tokenizer(noslash, padding=True, return_tensors='pt')["input_ids"]
         labels = torch.LongTensor(data["label"])
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
+
 
     def load_bcc(self, conf):
         """ Loads the BBC news dataset from [Kaggle](https://www.kaggle.com/c/learn-ai-bbc)
@@ -66,6 +70,7 @@ class MultitaskDataset():
 
         return train, val, test
 
+
     def process_bbc(self, data, tokenizer):
         """ Extracts the headlines and labels from the BBC news dataset. """
         headlines = tokenizer([b[0] for b in data], padding=True, return_tensors='pt')["input_ids"]
@@ -73,6 +78,7 @@ class MultitaskDataset():
         labels = torch.LongTensor([b[1] for b in data])
 
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
+        
 
     def load_datasets(self, conf):
         self.train = []
