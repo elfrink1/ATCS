@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument("--max_epochs", type=int, default=arg_defaults["max_epochs"],
                         help="the number of epochs after which to stop"  + help_text_default.format(arg_defaults["max_epochs"]))
     parser.add_argument("--finetuned_layers", type=int, default=arg_defaults["finetuned_layers"],
-                        help="the number of transformer layers of BERT to finetune"  + help_text_default.format(arg_defaults["finetuned_layers"]))
+                        help="the number of transformer layers of BERT to finetune (-1: all layers)"  + help_text_default.format(arg_defaults["finetuned_layers"]))
     parser.add_argument("--tokenizer", type=str, default=arg_defaults["tokenizer"],
                         choices=["BERT"], help="the tokenizer to use on the text"  + help_text_default.format(arg_defaults["tokenizer"]))
     parser.add_argument("--batch-size", type=int, default=arg_defaults["batch_size"],
