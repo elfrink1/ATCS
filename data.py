@@ -29,9 +29,9 @@ class Dataset():
     def process_hp(self, data, tokenizer, max_text_length=-1):
         """ Extracts the headlines and labels from the HuffPost dataset.
             The description is empty for some samples, which is why it is not returned."""
-        maxlength = [ex[:max_text_length] for ex in data["headline"]]
-        headlines = tokenizer(max_text_length, padding=True, return_tensors='pt')["input_ids"]
-        # descr = tokenizer(batch["short_description"])["input_ids"] ## is sometimes empty, which torch does not like
+        txt = [head + ' ' + desc for head, desc in zip(batch["headline"], batch["short_description"])]
+        maxlength = [ex[:max_text_length] for ex in txt]
+        txt = tokenizer(max_text_length, padding=True, return_tensors='pt')["input_ids"]
         labels = torch.LongTensor(data["category_num"])
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
 
