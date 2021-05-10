@@ -10,6 +10,8 @@ from berttrainer import BERTTraniner
 from bertutil import get_args
 
 def train_bert(loader, conf):
+    """ Train a BERT baseline model (BertClassifier) on the given dataset. The model that performs best on the validation set is saved.
+        If no validation set is given, the model with the best performance on the training set is saved. """
     trainer = pl.Trainer(default_root_dir=os.path.join(conf.path, conf.dataset, conf.optimizer, conf.name),
                          checkpoint_callback = ModelCheckpoint(save_weights_only=True, mode="max", monitor="train_acc" if loader['val'] == None 
                                                                                                             else "val_acc"),
@@ -17,6 +19,7 @@ def train_bert(loader, conf):
                          max_epochs=conf.max_epochs,                                            
                          progress_bar_refresh_rate= 1 if conf.progress_bar else 0) 
     
+    # Not really clear what these do, but are often disabled.
     trainer.logger._log_graph = True
     trainer.logger._default_hp_metric = None
 
