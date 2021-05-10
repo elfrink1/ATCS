@@ -1,39 +1,94 @@
-'''Initial setup: We have a base model M_init (e.g. BERT + small MLP) with parameters θ'''
-
-'''For each episode:
-Step 1 Sample a support set S and query set Q for the task'''
-
-'''Step 2 Duplicate the base model with deepcopy, the higher library or
-by copying the parameters θ to a new instance. The new model is
-referred to as Mepisode with parameters θ(0). Make sure the gradients
-are zero in the model.'''
-
-'''Step 3 Apply your original base model, M_init, on the support set S and
-calculate the prototype-based parameters of the linear layer, γ. Do
-not apply torch.no grad() or similar here. We will need gradients
-through the init part.'''
-
-'''Step 4 Initialize the output layer parameters φ(0) with the previously 
-calculated prototype initialization γ. Thereby, detach the initialization 
-so that the computation graph for calculating the prototypes is independent of the inner loop updates'''
-
-'''Step 5 Take k inner loop steps on the support set S with your episode model, Mepisode, 
-including the output parameters. Your final parameters are θ(k) and φ(k)'''
-
-'''Step 6 Replace φ(k) with φ(k) = γ + detach(φ(k) − γ)'''
+import torch.utils.data as data
+import pytorch_lightning as pl
+import os
 
 
-'''This trick adds the original prototypes back to the computation graph
-without changing the output parameter values. Note that you have
-to do this for both weight and bias parameter. In particular, for the
-weight parameter, your code could look something like this:
-W = 2 * prototypes + (W - 2 * prototypes).detach()'''
+from pytorch_lightning.callbacks import ModelCheckpoint
+from transformers import BertTokenizer
+from proto_data import Dataset
+from proto_trainer import ProtoTrainer
 
-'''Step 7 Apply the trained episode model Mepisode on the query set Q, and
-calculate the gradients with respect to θ(k) and θ using torch.autograd.grad.'''
 
-'''Step 8 Sum the gradients for θ(k) and θ, and store them in the gradient
-placeholder of your original model M_init. In case this is not the first
-episode, sum the new gradients with the ones already stored in Minit.
-Outer loop update Perform one update step using the gradients stored in
-M_init. Afterwards, set them to zero.'''
+# load_dataset('Fraser/news-category-dataset', cache_dir='./Data')
+# load_dataset("ag_news", cache_dir='./Data')
+# load_dataset("dbpedia_14", cache_dir='./Data')
+# load_dataset("yahoo_answers_topics", cache_dir='./Data')
+# load bbc news
+
+
+class config():
+    def __init__(self):
+        self.data_path = './Data/'
+        self.cache_path = './Cache/'
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        self.seed = 42
+
+        # bert h_parameters
+        self.finetuned_layers = 1
+        self.mlp_in = 768
+
+         # maml h_parameters
+        self.inner_steps = 1
+        self.meta_batch = 16
+        self.inner_lr = 0.1 #TODO: change
+        self.outer_lr = 0.1
+        self.max_epochs = 10
+
+        # episode h_parameters
+        self.way = 5
+        self.shot = 5
+        self.query_size = 10
+
+
+
+       
+def train_protomaml(config, loader):
+    trainer = pl.Trainer(default_root_dir=os.path.join('./Model'),
+                         checkpoint_callback = ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_query_acc"),
+                         gpus=1,
+                         max_epochs=config.max_epochs,                                            
+                         progress_bar_refresh_rate=1) 
+    
+    trainer.logger._log_graph = True
+    trainer.logger._default_hp_metric = None
+
+    pl.seed_everything(config.seed)
+    model = ProtoTrainer(config)
+    
+
+    trainer.fit(model, loader['train'], loader['val'])
+
+
+    
+    test_result = trainer.test(model, loader['test'])
+
+    return model, test_result
+
+
+
+
+if __name__ == "__main__":
+    config = config()
+
+    
+
+    dataset = Dataset(config, 'hp')
+
+
+    for sample in iter(dataset.train):
+        print(sample)
+
+    loader = {
+        'train' : data.DataLoader(dataset.train, batch_size=config.meta_batch, sampler=1),
+        'val'   : data.DataLoader(dataset.val, batch_size=config.meta_batch),
+        'test'  : data.DataLoader(dataset.test, batch_size=config.meta_batch)
+    }
+    
+    model, results = train_protomaml(config, loader)
+
+
+        
+
+
+
+
