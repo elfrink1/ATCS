@@ -29,11 +29,11 @@ class Dataset():
     def process_hp(self, data, tokenizer, max_text_length=-1):
         """ Extracts the headlines and labels from the HuffPost dataset.
             The description is empty for some samples, which is why it is not returned."""
-        txt = [head + ' ' + desc for head, desc in zip(batch["headline"], batch["short_description"])]
+        txt = [head + ' ' + desc for head, desc in zip(data["headline"], data["short_description"])]
         maxlength = [ex[:max_text_length] for ex in txt]
-        txt = tokenizer(max_text_length, padding=True, return_tensors='pt')["input_ids"]
+        txt = tokenizer(maxlength, padding=True, return_tensors='pt')["input_ids"]
         labels = torch.LongTensor(data["category_num"])
-        return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
+        return [{"txt" : h, "label" : l} for h, l in zip(txt, labels)]
 
     def load_ag(self, conf):
         """ Loads the AG news dataset from [Hugging Face](https://huggingface.co/datasets/ag_news) 
@@ -82,6 +82,9 @@ class Dataset():
         labels = torch.LongTensor([b[1] for b in data])
 
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
+
+if __name__ == "__main__":
+    pass
 
     
 
