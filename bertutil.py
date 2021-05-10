@@ -34,7 +34,7 @@ def get_args():
                         help="the number of transformer layers of BERT to finetune (-1: all layers)"  + help_text_default.format(arg_defaults["finetuned_layers"]))
     parser.add_argument("--tokenizer", type=str, default=arg_defaults["tokenizer"],
                         choices=["BERT"], help="the tokenizer to use on the text"  + help_text_default.format(arg_defaults["tokenizer"]))
-    parser.add_argument("--batch-size", type=int, default=arg_defaults["batch_size"],
+    parser.add_argument("--batch_size", type=int, default=arg_defaults["batch_size"],
                         help="size of the batches"  + help_text_default.format(arg_defaults["batch_size"]))
     parser.add_argument("--device", type=str, default=arg_defaults["device"],
                         choices=["cpu", "gpu"], help="the device to use"  + help_text_default.format(arg_defaults["device"]))
