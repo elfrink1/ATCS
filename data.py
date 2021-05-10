@@ -83,11 +83,6 @@ class Dataset():
 
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
 
-    @staticmethod
-    def batch_data(data, bs=2):
-        ''' Returns the data in a list of batches of size bs'''
-        return [[data[0][i:i+bs], data[1][i:i+bs]] for i in range(0, len(data), bs)]
-
     
 
 
