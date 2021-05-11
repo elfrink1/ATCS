@@ -1,4 +1,5 @@
 from datasets import load_dataset
+from torch.utils.data import Dataset
 import random
 import torch
 import numpy as np
@@ -12,12 +13,11 @@ import shutil
 
 # Access splits with Dataset.train/val/test
 # split[class_id] = [sentences]
-class Dataset():
+class ProtoDataset():
     def __init__(self, config, dataset):
         self.config = config
-        self.cache_path = config.cache_path
-        self.set_path = os.path.join(config.data_path, dataset)
-        self.tokenizer = config.tokenizer
+        self.dataset = dataset
+        self.set_path = os.path.join(self.config.data_path, dataset)
 
         self.train = self.Split(config)
         self.val = self.Split(config)
@@ -34,24 +34,26 @@ class Dataset():
         if dataset == "dbpedia":
             self.load_data(self.process_dbpedia)
 
-    class Split():
+    class Split(Dataset):
         def __init__(self, config):
             self.config = config
             self.data = {} # dict of class_id: [sentences]
+       
+        def __getitem__(self, idx):
+            if self.config.debug == True:
+                batch = [self.debug_episode() for i in range(self.config.meta_batch)]
+            else:
+                batch = [self.sample_episode() for i in range(self.config.meta_batch)]
 
-        def __iter__(self):
-            return self
-        
-        def __next__(self):
-            return self.sample_episode() # sample_dataset when more datasets are used
+            return batch
 
         def __len__(self):
-            return 50
+            return 1
 
         # returns two lists of [tokenized_sentences]
         def sample_episode(self):
             #config.way = random.randint(config.min_way, min(config.max_way, len(self.data))) # amount of ways, min_ways <= n <= min(max_ways, n_classes)
-            class_ids = random.sample(range(len(self.data)), self.config.way) # sample classes, n = way
+            class_ids = random.sample(data.keys(), self.config.way) # sample classes, n = way
             query, support = [], []
             
             for class_id in class_ids: # for all classes
@@ -63,7 +65,23 @@ class Dataset():
             tok_query = self.config.tokenizer(query, padding=True, truncation=True, return_tensors='pt')
             tok_support = self.config.tokenizer(support, padding=True, truncation=True, return_tensors='pt')
 
-            return tok_support, tok_query#, class_ids
+            return tok_support.to(self.config.device), tok_query.to(self.config.device)#, class_ids
+
+        def debug_episode(self):
+            class_ids = list(range(self.config.way)) # sample classes, n = way
+            query, support = [], []
+            
+            for class_id in class_ids: # for all classes
+                sample_ids = list(range(self.config.query_size + self.config.shot)) # number of sampled ids = n_query + n_support
+                
+                query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[:self.config.query_size]]) # class_query = first sampled ids, n = query_size
+                support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[self.config.query_size:]]) # class_support = last sampled ids, n = shot
+
+            tok_query = self.config.tokenizer(query, padding=True, truncation=True, return_tensors='pt')
+            tok_support = self.config.tokenizer(support, padding=True, truncation=True, return_tensors='pt')
+
+            return tok_support.to(self.config.device), tok_query.to(self.config.device)#, class_ids
+
 
 
 
@@ -73,13 +91,13 @@ class Dataset():
         if os.path.exists(self.set_path):
             self.load_splits()
         else:
-            #os.mkdir(self.cache_path)
+            #os.mkdir(self.config.cache_path)
             process_fn()
-            #shutil.rmtree(self.cache_path) # remove cache
+            #shutil.rmtree(self.config.cache_path) # remove cache
 
 
     def save_splits(self):
-        os.mkdir(self.set_path)
+        os.mkdir(self.config.set_path)
         torch.save(self.train.data, os.path.join(self.set_path, 'train.pt'))
         torch.save(self.train.data, os.path.join(self.set_path, 'val.pt'))
         torch.save(self.train.data, os.path.join(self.set_path, 'test.pt'))     
@@ -93,7 +111,7 @@ class Dataset():
     """DATASET SPECIFIC"""
     def process_hp(self):
         #TODO: change to use all data?
-        dataset = load_dataset('Fraser/news-category-dataset', split='train', cache_dir=self.cache_path)
+        dataset = load_dataset('Fraser/news-category-dataset', split='train', cache_dir=self.config.cache_path)
         
         tasks = {i: [] for i in range(41)} 
         for example in dataset:
