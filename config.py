@@ -6,6 +6,7 @@ arg_defaults = {
     "lr" : 0.001,
     "max_epochs" : 100,
     "finetuned_layers" : 0,
+    "task_layers" : 1,
     "tokenizer" : "BERT",
     "batch_size" : 64,
     "device" : "gpu",
@@ -32,6 +33,8 @@ def get_args():
                         help="the number of epochs after which to stop"  + help_text_default.format(arg_defaults["max_epochs"]))
     parser.add_argument("--finetuned_layers", type=int, default=arg_defaults["finetuned_layers"],
                         help="the number of transformer layers of BERT to finetune (-1: all layers)"  + help_text_default.format(arg_defaults["finetuned_layers"]))
+    parser.add_argument("--task_layers", type=int, default=arg_defaults["task_layers"],
+                        help="the number of task-specific layers of BERT in the multitask setup (-1: all layers)"  + help_text_default.format(arg_defaults["task_layers"]))            
     parser.add_argument("--tokenizer", type=str, default=arg_defaults["tokenizer"],
                         choices=["BERT"], help="the tokenizer to use on the text"  + help_text_default.format(arg_defaults["tokenizer"]))
     parser.add_argument("--batch_size", type=int, default=arg_defaults["batch_size"],
