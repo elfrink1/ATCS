@@ -50,7 +50,7 @@ class Dataset():
         labels = torch.LongTensor(data["label"])
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
 
-    def load_bcc(self, conf):
+    def load_bbc(self, conf):
         """ Loads the BBC news dataset from [Kaggle](https://www.kaggle.com/c/learn-ai-bbc)
             This dataset has to be downloaded manually using the `downloadbbcdata` file.
             Splits in train (1490) and test (735)."""
