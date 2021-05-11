@@ -82,15 +82,42 @@ class MultitaskDataset():
 
     # See newsgroup.txt for info
     def load_ng(self, conf):
+        twenty = conf.twenty # placeholder for clalrity
+        if twenty:
+            categories = ['18828_alt.atheism', '18828_comp.graphics', '18828_comp.os.ms-windows.misc', '18828_comp.sys.ibm.pc.hardware', 
+            '18828_comp.sys.mac.hardware', '18828_comp.windows.x', '18828_misc.forsale', '18828_rec.autos', '18828_rec.motorcycles', 
+            '18828_rec.sport.baseball', '18828_rec.sport.hockey', '18828_sci.crypt', '18828_sci.electronics', '18828_sci.med', '18828_sci.space', 
+            '18828_soc.religion.christian', '18828_talk.politics.guns', '18828_talk.politics.mideast', '18828_talk.politics.misc', 
+            '18828_talk.religion.misc']
+
+        else:
+            politics = ['18828_talk.politics.guns', '18828_talk.politics.mideast', '18828_talk.politics.misc'] # Label 0
+            science = ['18828_sci.crypt', '18828_sci.electronics', '18828_sci.med', '18828_sci.space'] # 1
+            religion = ['18828_alt.atheism', '18828_soc.religion.christian', '18828_talk.religion.misc'] # 2
+            computer = ['18828_comp.graphics', '18828_comp.os.ms-windows.misc', '18828_comp.sys.ibm.pc.hardware', 
+            '18828_comp.sys.mac.hardware', '18828_comp.windows.x'] # 3
+            sports = ['18828_rec.autos', '18828_rec.motorcycles', '18828_rec.sport.baseball', '18828_rec.sport.hockey'] # 4
+            sale = ['18828_misc.forsale'] # 5
+
+            for i, cat in enumerate(politics, science, religion, computer, sports, sale):
+
         dataset = load_dataset("newsgroup")
+
+        
         train = None
         val = None
         test = None
         return train, val, test
 
 
-    def process_ng(self, data, tokenizer):
-        pass
+    def process_ng(self, data, tokenizer, twenty=False):
+        """ Extracts the headlines and labels from the 20 newsgroups dataset. """
+
+        headlines = tokenizer([b[0] for b in data], padding=True, return_tensors='pt')["input_ids"]
+        labels = torch.LongTensor([b[1] for b in data])
+
+        return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
+
 
     
 
