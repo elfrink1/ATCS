@@ -26,6 +26,9 @@ class MultitaskTrainer(pl.LightningModule):
 
         return [optimizer], [scheduler]
 
+
+# TODO Weighted sum of losses
+# TODO Task selection
     def training_step(self, batch, batch_idx, task):
         out_ = self.model(batch["txt"], task)
         loss = self.loss_module(out_, batch["label"])

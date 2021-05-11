@@ -51,7 +51,7 @@ class MultitaskDataset():
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
 
 
-    def load_bcc(self, conf):
+    def load_bbc(self, conf):
         """ Loads the BBC news dataset from [Kaggle](https://www.kaggle.com/c/learn-ai-bbc)
             This dataset has to be downloaded manually using the `downloadbbcdata` file.
             Splits in train (1490) and test (735)."""
@@ -78,8 +78,8 @@ class MultitaskDataset():
 
     def process_bbc(self, data, tokenizer, max_text_length=-1):
         """ Extracts the headlines and labels from the BBC news dataset. """
-        maxlenght = [b[0][:max_text_length] for b in data]
-        headlines = tokenizer(maxlenght, padding=True, return_tensors='pt')["input_ids"]
+        maxlength = [b[0][:max_text_length] for b in data]
+        headlines = tokenizer(maxlength, padding=True, return_tensors='pt')["input_ids"]
 
         labels = torch.LongTensor([b[1] for b in data])
 
@@ -88,13 +88,20 @@ class MultitaskDataset():
 
     # See newsgroup.txt for info
     def load_ng(self, conf):
-        twenty = conf.twenty # placeholder for clalrity
+        twenty = False # placeholder for conf.twenty
+        text = []
+
         if twenty:
             categories = ['18828_alt.atheism', '18828_comp.graphics', '18828_comp.os.ms-windows.misc', '18828_comp.sys.ibm.pc.hardware',
             '18828_comp.sys.mac.hardware', '18828_comp.windows.x', '18828_misc.forsale', '18828_rec.autos', '18828_rec.motorcycles',
             '18828_rec.sport.baseball', '18828_rec.sport.hockey', '18828_sci.crypt', '18828_sci.electronics', '18828_sci.med', '18828_sci.space',
             '18828_soc.religion.christian', '18828_talk.politics.guns', '18828_talk.politics.mideast', '18828_talk.politics.misc',
             '18828_talk.religion.misc']
+
+            for i, category in enumerate(categories):
+                data = load_dataset("newsgroup", subcat)['train']['text']:
+                text.append([[ex.split('\n', 2)[2], i] for ex in data])
+
 
         else:
             politics = ['18828_talk.politics.guns', '18828_talk.politics.mideast', '18828_talk.politics.misc'] # Label 0
@@ -105,24 +112,25 @@ class MultitaskDataset():
             sports = ['18828_rec.autos', '18828_rec.motorcycles', '18828_rec.sport.baseball', '18828_rec.sport.hockey'] # 4
             sale = ['18828_misc.forsale'] # 5
 
-            # for i, cat in enumerate(politics, science, religion, computer, sports, sale):
-
-        dataset = load_dataset("newsgroup")
-
-
+            for i, category in enumerate(politics, science, religion, computer, sports, sale):
+                for subcat in category:
+                    data = load_dataset("newsgroup", subcat)['train']['text']:
+                    text.append([[ex.split('\n', 2)[2], i] for ex in data])
+        # text i        
         train = None
         val = None
         test = None
         return train, val, test
 
 
-    def process_ng(self, data, tokenizer, twenty=False):
+    def process_ng(self, data, tokenizer):
         """ Extracts the headlines and labels from the 20 newsgroups dataset. """
 
-        headlines = tokenizer([b[0] for b in data], padding=True, return_tensors='pt')["input_ids"]
+        text = tokenizer([b[0] for b in data], padding=True, return_tensors='pt')["input_ids"]
         labels = torch.LongTensor([b[1] for b in data])
 
-        return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
+        return [{"txt" : h, "label" : l} for h, l in zip(text), labels)]
+
 
     def load_datasets(self, conf):
         self.train = {}

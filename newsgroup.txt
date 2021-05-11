@@ -36,4 +36,4 @@ talk.politics.mideast
 -------------------
 talk.religion.misc
 alt.atheism
-soc.religion.christia
+soc.religion.christian

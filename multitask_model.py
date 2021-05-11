@@ -27,7 +27,7 @@ class MultitaskBert(nn.Module):
 
         self.ng = get_task_layers(6)
 
-
+    # TODO Make Bert layer task specific
     def get_task_layers(self, num_classes):
 
         if conf.task_layers > 0:
