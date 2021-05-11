@@ -116,7 +116,7 @@ class MultitaskDataset():
                 for subcat in category:
                     data = load_dataset("newsgroup", subcat)['train']['text']:
                     text.append([[ex.split('\n', 2)[2], i] for ex in data])
-        # text i        
+        # text i
         train = None
         val = None
         test = None
@@ -140,18 +140,22 @@ class MultitaskDataset():
         train_hp, val_hp, test_hp = self.load_hp(conf)
         train_ag, val_ag, test_ag = self.load_ag(conf)
         train_bbc, val_bbc, test_bbc = self.load_bcc(conf)
+        # train_ng, val_ng, test_ng = self.load_ng(conf)
 
         self.train['hp'] = train_hp
         self.train['ag'] = train_ag
         self.train['bbc'] = train_bbc
+        # self.train['ng'] = train_ng
 
         self.val['hp'] = val_hp
         self.val['ag'] = val_ag
         self.val['bbc'] = val_bbc
+        # self.val['ng'] = val_ng
 
         self.test['hp'] = test_hp
         self.test['ag'] = test_ag
         self.test['bbc'] = test_bbc
+        # self.test['ng'] = test_ng
 
     @staticmethod
     def batch_data(data, bs=2):
