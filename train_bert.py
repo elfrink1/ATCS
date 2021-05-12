@@ -28,8 +28,10 @@ def train_bert(loader, conf):
                          optimizer_hparams={"lr": conf.lr}, conf=conf)
     
     if loader['val'] != None:
+        print("Using validation set")
         trainer.fit(model, loader['train'], loader['val'])
     else:
+        print("Not using validation set")
         trainer.fit(model, loader['train'])
     
     test_result = trainer.test(model, loader['test'])
