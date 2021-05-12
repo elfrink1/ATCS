@@ -4,7 +4,7 @@ from datasets import load_dataset
 from sklearn.model_selection import train_test_split
 
 tokenizers = {
-    "BERT" : BertTokenizer.from_pretrained('bert-base-uncased')
+    "BERT" : BertTokenizer.from_pretrained('bert-base-uncased',  model_max_length=512)
 }
 
 class MultitaskDataset():
@@ -116,7 +116,7 @@ class MultitaskDataset():
             for i, category in enumerate([politics, science, religion, computer, sports, sale]):
                 for subcat in category:
                     data = load_dataset("newsgroup", subcat)['train']['text']
-                    text += [[ex.split('\n', 2)[2], i] for ex in data])
+                    text += [[" ".join(ex.split('\n', 2)[2].split()[:512]), i] for ex in data]
 
         
         train_val, test = train_test_split(text, test_size=0.2, random_state=42)
@@ -130,8 +130,12 @@ class MultitaskDataset():
     def process_ng(self, data, tokenizer):
         """ Extracts the headlines and labels from the 20 newsgroups dataset. """
 
-        text = tokenizer([b[0] for b in data], padding=True, return_tensors='pt')["input_ids"]
-        labels = torch.LongTensor([b[1] for b in data])
+        text = [b[0] for b in data]
+        text = tokenizer(text, padding=True, return_tensors='pt')["input_ids"]
+        text = [h if len(h) < 512 else h[:512] for h in text]
+
+        labels = [b[1] for b in data]
+        labels = torch.LongTensor(labels)
 
         return [{"txt" : h, "label" : l} for h, l in zip(text, labels)]
 
