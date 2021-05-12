@@ -100,7 +100,7 @@ class MultitaskDataset():
             '18828_talk.religion.misc']
 
             for i, category in enumerate(categories):
-                data = load_dataset("newsgroup", subcat)['train']['text']
+                data = load_dataset("newsgroup", category)['train']['text']
                 text.append([[ex.split('\n', 2)[2], i] for ex in data])
 
 
@@ -116,7 +116,7 @@ class MultitaskDataset():
             for i, category in enumerate([politics, science, religion, computer, sports, sale]):
                 for subcat in category:
                     data = load_dataset("newsgroup", subcat)['train']['text']
-                    text.append([[ex.split('\n', 2)[2], i] for ex in data])
+                    text += [[ex.split('\n', 2)[2], i] for ex in data])
 
         
         train_val, test = train_test_split(text, test_size=0.2, random_state=42)
