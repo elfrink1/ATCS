@@ -113,7 +113,7 @@ class MultitaskDataset():
             sports = ['18828_rec.autos', '18828_rec.motorcycles', '18828_rec.sport.baseball', '18828_rec.sport.hockey'] # 4
             sale = ['18828_misc.forsale'] # 5
 
-            for i, category in enumerate(politics, science, religion, computer, sports, sale):
+            for i, category in enumerate([politics, science, religion, computer, sports, sale]):
                 for subcat in category:
                     data = load_dataset("newsgroup", subcat)['train']['text']
                     text.append([[ex.split('\n', 2)[2], i] for ex in data])
