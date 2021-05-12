@@ -120,7 +120,7 @@ class MultitaskDataset():
 
         
         train_val, test = train_test_split(text, test_size=0.2, random_state=42)
-        train, val = train_test_split(trainval, test_size=0.1, random_state=42)
+        train, val = train_test_split(train_val, test_size=0.1, random_state=42)
         train = self.process_ng(train, tokenizers[conf.tokenizer])
         val = self.process_ng(val, tokenizers[conf.tokenizer])
         test = self.process_ng(test, tokenizers[conf.tokenizer])
