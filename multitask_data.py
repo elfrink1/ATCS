@@ -1,6 +1,7 @@
 import torch
 from transformers import BertTokenizer
 from datasets import load_dataset
+from sklearn.model_selection import train_test_split
 
 tokenizers = {
     "BERT" : BertTokenizer.from_pretrained('bert-base-uncased')
@@ -99,7 +100,7 @@ class MultitaskDataset():
             '18828_talk.religion.misc']
 
             for i, category in enumerate(categories):
-                data = load_dataset("newsgroup", subcat)['train']['text']:
+                data = load_dataset("newsgroup", subcat)['train']['text']
                 text.append([[ex.split('\n', 2)[2], i] for ex in data])
 
 
@@ -114,12 +115,15 @@ class MultitaskDataset():
 
             for i, category in enumerate(politics, science, religion, computer, sports, sale):
                 for subcat in category:
-                    data = load_dataset("newsgroup", subcat)['train']['text']:
+                    data = load_dataset("newsgroup", subcat)['train']['text']
                     text.append([[ex.split('\n', 2)[2], i] for ex in data])
-        # text i
-        train = None
-        val = None
-        test = None
+
+        
+        train_val, test = train_test_split(text, test_size=0.2, random_state=42)
+        train, val = train_test_split(trainval, test_size=0.1, random_state=42)
+        train = self.process_ng(train, tokenizers[conf.tokenizer])
+        val = self.process_ng(val, tokenizers[conf.tokenizer])
+        test = self.process_ng(test, tokenizers[conf.tokenizer])
         return train, val, test
 
 
@@ -129,7 +133,7 @@ class MultitaskDataset():
         text = tokenizer([b[0] for b in data], padding=True, return_tensors='pt')["input_ids"]
         labels = torch.LongTensor([b[1] for b in data])
 
-        return [{"txt" : h, "label" : l} for h, l in zip(text), labels)]
+        return [{"txt" : h, "label" : l} for h, l in zip(text, labels)]
 
 
     def load_datasets(self, conf):
