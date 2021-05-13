@@ -8,7 +8,7 @@ tokenizers = {
     "BERT" : BertTokenizer.from_pretrained('bert-base-uncased',  model_max_length=512)
 }
 
-class MultitaskDataset():
+class LoadMultitaskData():
     def __init__(self, conf):
         self.load_datasets(conf)
 
@@ -154,45 +154,71 @@ class MultitaskDataset():
         train_hp, val_hp, test_hp = self.load_hp(conf)
         train_ag, val_ag, test_ag = self.load_ag(conf)
         train_bbc, val_bbc, test_bbc = self.load_bbc(conf)
-        # train_ng, val_ng, test_ng = self.load_ng(conf)
+        train_ng, val_ng, test_ng = self.load_ng(conf)
 
         self.train['hp'] = train_hp
         self.train['ag'] = train_ag
         self.train['bbc'] = train_bbc
-        # self.train['ng'] = train_ng
+        self.train['ng'] = train_ng
 
         self.val['hp'] = val_hp
         self.val['ag'] = val_ag
         self.val['bbc'] = val_bbc
-        # self.val['ng'] = val_ng
+        self.val['ng'] = val_ng
 
         self.test['hp'] = test_hp
         self.test['ag'] = test_ag
         self.test['bbc'] = test_bbc
-        # self.test['ng'] = test_ng
+        self.test['ng'] = test_ng
 
     @staticmethod
     def batch_data(data, bs=2):
         ''' Returns the data in a list of batches of size bs'''
         return [[data[0][i:i+bs], data[1][i:i+bs]] for i in range(0, len(data), bs)]
 
-class Args():
-    def __init__(self):
-        self.path = "models/bert"
-        self.optimizer = "Adam"
-        self.lr = 0.001
-        self.max_epochs = 100
-        self.finetuned_layers = 0
-        self.tokenizer = "BERT"
-        self.batch_size = 64
-        self.device = "gpu"
-        self.seed = 20
-        self.max_text_length = -1
 
-if __name__ == "__main__":
-    conf = Args()
-    multitask_data = MultitaskDataset(conf)
-    print("datapoint hp:", multitask_data.train['hp'][0], '\n')
-    print("datapoint ag:", multitask_data.train['ag'][0], '\n')
-    print("datapoint bbc:", multitask_data.train['bbc'][0], '\n')
-    print("datapoint ng:", multitask_data.train['ng'][0], '\n')
+class MergeMultitaskData(data.Dataset):
+    def __init__(self, dataset_dict):
+        super().__init__()
+        self.datasets = dataset_dict
+        self.len_hp = len(self.datasets['hp'])
+        self.len_ag = len(self.datasets['ag'])
+        self.len_bbc = len(self.datasets['bbc'])
+        self.len_ng = len(self.datasets['ng'])
+
+    def __len__(self):
+        return self.len_hp + self.len_ag + self.len_bbc
+
+    def __getitem__(self, idx):
+        batch = {}
+        batch['hp'] = self.datasets['hp'][idx]
+        batch['ag'] = self.datasets['ag'][idx]
+        batch['bbc'] = self.datasets['bbc'][idx]
+        # batch['ng'] = self.datasets['ng'][idx]
+        return batch
+
+# class Args():
+#     def __init__(self):
+#         self.path = "models/bert"
+#         self.optimizer = "Adam"
+#         self.lr = 0.001
+#         self.max_epochs = 100
+#         self.finetuned_layers = 0
+#         self.tokenizer = "BERT"
+#         self.batch_size = 64
+#         self.device = "gpu"
+#         self.seed = 20
+#         self.max_text_length = -1
+#
+# if __name__ == "__main__":
+#     conf = Args()
+#     multitask_data = LoadMultitaskData(conf)
+#     train_data = MergeMultitaskData(multitask_data.train)
+#     loader = data.DataLoader(train_data, batch_size = conf.batch_size)
+#     for batch in loader:
+#         print(batch)
+#         break
+#     print("datapoint hp:", multitask_data.train['hp'][0], '\n')
+#     print("datapoint ag:", multitask_data.train['ag'][0], '\n')
+#     print("datapoint bbc:", multitask_data.train['bbc'][0], '\n')
+#     print("datapoint ng:", multitask_data.train['ng'][0], '\n')
