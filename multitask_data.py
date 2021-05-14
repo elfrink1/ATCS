@@ -248,7 +248,7 @@ class Args():
         self.device = "gpu"
         self.seed = 20
         self.max_text_length = -1
-        self.save = True
+        self.save = False
         self.load = False
 
 if __name__ == "__main__":
