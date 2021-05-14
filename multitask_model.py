@@ -21,16 +21,20 @@ class MultitaskBert(nn.Module):
 
         embedding, encoder, pooler = [*self.bert.children()]
         tl = -conf.task_layers
+        # print(embedding)
+        # print(encoder.layer)
+        # print(pooler)
+        # jfirjfr
 
-        self.shared = nn.Sequential(embedding, encoder[:tl])
+        self.shared = nn.Sequential(embedding, encoder.layer[:tl])
 
-        self.ag = get_task_layers(encoder[tl:], pooler, 4)
+        self.ag = self.get_task_layers(encoder.layer[tl:], pooler, 4)
 
-        self.hp = get_task_layers(encoder[tl:], pooler, 41)
+        self.hp = self.get_task_layers(encoder.layer[tl:], pooler, 41)
 
-        self.bbc = get_task_layers(encoder[tl:], pooler, 5)
+        self.bbc = self.get_task_layers(encoder.layer[tl:], pooler, 5)
 
-        self.ng = get_task_layers(encoder[tl:], pooler, 6)
+        self.ng = self.get_task_layers(encoder.layer[tl:], pooler, 6)
 
 
     # TODO I am unsure whether we should add the pooling layer, so I have commented it out for now
@@ -41,25 +45,42 @@ class MultitaskBert(nn.Module):
         task_layers = nn.Sequential(
             encoder,
             pooler,
-            nn.ReLU()
+            nn.ReLU(),
             nn.Linear(768, num_classes)
         )
         return task_layers
 
 
-    def forward(self, batch, task):
-        b = self.shared(batch).last_hidden_state
+    def forward(self, batch):
+        print(batch['hp']['txt'])
+        out_hp = self.shared(batch['hp']['txt']).last_hidden_state
+        out_ag = self.shared(batch['ag']['txt']).last_hidden_state
+        out_bbc = self.shared(batch['bbc']['txt']).last_hidden_state
+        out_ng = self.shared(batch['ng']['txt']).last_hidden_state
 
-        if task == 'ag':
-            c = self.ag(b)
+        out_hp = self.hp(out_hp)
+        out_ag = self.ag(out_ag)
+        out_bbc = self.bbc(out_bbc)
+        out_ng = self.ng(out_ng)
 
-        elif task == 'bbc':
-            c = self.bbc(b)
+        return (out_hp, out_ag, out_bbc, out_ng)
 
-        elif task == 'hp':
-            c = self.hp(b)
+class Args():
+    def __init__(self):
+        self.path = "models/bert"
+        self.optimizer = "Adam"
+        self.lr = 0.001
+        self.max_epochs = 100
+        self.finetuned_layers = 0
+        self.task_layers = 1
+        self.tokenizer = "BERT"
+        self.batch_size = 64
+        self.device = "gpu"
+        self.seed = 20
+        self.max_text_length = -1
+        self.save = False
+        self.load = False
 
-        elif task == 'ng':
-            c = self.ng(b)
-
-        return c
+if __name__ == "__main__":
+    conf = Args()
+    model = MultitaskBert(conf)

@@ -11,7 +11,9 @@ arg_defaults = {
     "batch_size" : 64,
     "device" : "gpu",
     "seed" : 20,
-    "max_text_length": -1
+    "max_text_length": -1,
+    "save" : False,
+    "load" : False
 }
 
 def get_args():
@@ -19,10 +21,6 @@ def get_args():
     help_text_default = " (default: {})"
     parser.add_argument("name", type=str,
                         help="name of the model")
-    # parser.add_argument("dataset", type=str, choices=["hp", "ag", "bbc"],
-    #                     help="the dataset used for training")
-    # parser.add_argument("nr_classes", type=int,
-    #                     help="the number of classes of the dataset")
     parser.add_argument("--path", type=str, default=arg_defaults["path"],
                         help="the path to save the model checkpoints and logs"  + help_text_default.format(arg_defaults["path"]))
     parser.add_argument("--optimizer", type=str, default=arg_defaults["optimizer"],
@@ -34,7 +32,7 @@ def get_args():
     parser.add_argument("--finetuned_layers", type=int, default=arg_defaults["finetuned_layers"],
                         help="the number of transformer layers of BERT to finetune (-1: all layers)"  + help_text_default.format(arg_defaults["finetuned_layers"]))
     parser.add_argument("--task_layers", type=int, default=arg_defaults["task_layers"],
-                        help="the number of task-specific layers of BERT in the multitask setup"  + help_text_default.format(arg_defaults["task_layers"]))            
+                        help="the number of task-specific layers of BERT in the multitask setup"  + help_text_default.format(arg_defaults["task_layers"]))
     parser.add_argument("--tokenizer", type=str, default=arg_defaults["tokenizer"],
                         choices=["BERT"], help="the tokenizer to use on the text"  + help_text_default.format(arg_defaults["tokenizer"]))
     parser.add_argument("--batch_size", type=int, default=arg_defaults["batch_size"],
@@ -47,6 +45,10 @@ def get_args():
                         help="show the progress bar")
     parser.add_argument("--max_text_length", type=int, default=arg_defaults["max_text_length"],
                         help="the max text length in characters (-1: no limit)"  + help_text_default.format(arg_defaults["max_text_length"]))
+    parser.add_argument("--save", type=bool, default=arg_defaults["save"],
+                        help="save the datasets locally if True")
+    parser.add_argument("--load", type=bool, default=arg_defaults["load"],
+                        help="save the datasets locally if True")
 
 
     args = parser.parse_args()

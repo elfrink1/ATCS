@@ -12,8 +12,8 @@ class MultitaskTrainer(pl.LightningModule):
         self.model = MultitaskBert(conf)
         self.loss_module = nn.CrossEntropyLoss()
 
-    def forward(self, batch, task):
-        return self.model(batch, task)
+    def forward(self, batch):
+        return self.model(batch)
 
     def configure_optimizers(self):
         """ Supported optimizers are Adam and Stochastic Gradient Descent. Scheduler is hard coded for preliminary results.
@@ -28,25 +28,59 @@ class MultitaskTrainer(pl.LightningModule):
 
 
 # TODO Weighted sum of losses
-    
-# TODO Task selection
-    def training_step(self, batch, batch_idx, task):
-        out_ = self.model(batch["txt"], task)
-        loss = self.loss_module(out_, batch["label"])
-        acc = (out_.argmax(dim=-1) == batch["label"]).float().mean()
 
-        self.log('train_acc', acc, on_step=False, on_epoch=True)
-        self.log('train_loss', loss)
-        return loss
+    def training_step(self, batch, batch_idx):
+        out_ = self.model(batch)
+        loss_hp = self.loss_module(out_[0], batch['hp']["label"])
+        loss_ag = self.loss_module(out_[1], batch['ag']["label"])
+        loss_bbc = self.loss_module(out_[2], batch['bbc']["label"])
+        loss_ng = self.loss_module(out_[3], batch['ng']["label"])
+        total_loss = loss_hp + loss_ag + loss_bbc + loss_ng
 
-    def validation_step(self, batch, batch_idx, task):
+        acc_hp = (out_[0].argmax(dim=-1) == batch['hp']["label"]).float().mean()
+        acc_ag = (out_[1].argmax(dim=-1) == batch['ag']["label"]).float().mean()
+        acc_bbc = (out_[2].argmax(dim=-1) == batch['bbc']["label"]).float().mean()
+        acc_ng = (out_[3].argmax(dim=-1) == batch['ng']["label"]).float().mean()
+        avg_train_acc = (acc_hp + acc_ag + acc_bbc + acc_ng) / 4
+
+        self.log('train_acc_hp', acc_hp, on_step=False, on_epoch=True)
+        self.log('train_acc_ag', acc_ag, on_step=False, on_epoch=True)
+        self.log('train_acc_bbc', acc_bbc, on_step=False, on_epoch=True)
+        self.log('train_acc_ng', acc_ng, on_step=False, on_epoch=True)
+        self.log('train_acc', avg_train_acc, on_step=False, on_epoch=True)
+
+        self.log('train_loss_hp', loss_hp)
+        self.log('train_loss_ag', loss_ag)
+        self.log('train_loss_bbc', loss_bbc)
+        self.log('train_loss_ng', loss_ng)
+        return total_loss
+
+    def validation_step(self, batch, batch_idx):
         """ Simply calculate the accuracy and log it. """
-        out_ = self.model(batch["txt"], task)
-        acc = (out_.argmax(dim=-1) == batch["label"]).float().mean()
-        self.log('val_acc', acc)
+        out_ = self.model(batch)
+        acc_hp = (out_[0].argmax(dim=-1) == batch['hp']["label"]).float().mean()
+        acc_ag = (out_[1].argmax(dim=-1) == batch['ag']["label"]).float().mean()
+        acc_bbc = (out_[2].argmax(dim=-1) == batch['bbc']["label"]).float().mean()
+        acc_ng = (out_[3].argmax(dim=-1) == batch['ng']["label"]).float().mean()
+        avg_val_acc = (acc_hp + acc_ag + acc_bbc + acc_ng) / 4
 
-    def test_step(self, batch, batch_idx, task):
+        self.log('val_acc_hp', acc_hp)
+        self.log('val_acc_ag', acc_ag)
+        self.log('val_acc_bbc', acc_bbc)
+        self.log('val_acc_ng', acc_ng)
+        self.log('val_acc', avg_val_acc)
+
+    def test_step(self, batch, batch_idx):
         """ Simply calculate the accuracy and log it. """
-        out_ = self.model(batch["txt"], task)
-        acc = (out_.argmax(dim=-1) == batch["label"]).float().mean()
-        self.log('test_acc', acc)
+        out_ = self.model(batch)
+        acc_hp = (out_[0].argmax(dim=-1) == batch['hp']["label"]).float().mean()
+        acc_ag = (out_[1].argmax(dim=-1) == batch['ag']["label"]).float().mean()
+        acc_bbc = (out_[2].argmax(dim=-1) == batch['bbc']["label"]).float().mean()
+        acc_ng = (out_[3].argmax(dim=-1) == batch['ng']["label"]).float().mean()
+        avg_test_acc = (acc_hp + acc_ag + acc_bbc + acc_ng) / 4
+
+        self.log('val_acc_hp', acc_hp)
+        self.log('val_acc_ag', acc_ag)
+        self.log('val_acc_bbc', acc_bbc)
+        self.log('val_acc_ng', acc_ng)
+        self.log('test_acc', avg_test_acc)
