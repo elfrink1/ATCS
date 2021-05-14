@@ -4,6 +4,9 @@ from transformers import BertTokenizer
 from datasets import load_dataset
 from sklearn.model_selection import train_test_split
 import re
+import os
+import json
+
 
 tokenizers = {
     "BERT" : BertTokenizer.from_pretrained('bert-base-uncased',  model_max_length=512)
@@ -131,12 +134,12 @@ class LoadMultitaskData():
         train = self.process_ng(train, tokenizers[conf.tokenizer])
         val = self.process_ng(val, tokenizers[conf.tokenizer])
         test = self.process_ng(test, tokenizers[conf.tokenizer])
+
         return train, val, test
 
 
-    def process_ng(self, data, tokenizer):
+    def process_ng(self, data, tokenizer, local=0):
         """ Extracts the headlines and labels from the 20 newsgroups dataset. """
-
         text = [b[0] for b in data]
         text = tokenizer(text, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
 
@@ -151,10 +154,24 @@ class LoadMultitaskData():
         self.val = {}
         self.test = {}
 
-        train_hp, val_hp, test_hp = self.load_hp(conf)
-        train_ag, val_ag, test_ag = self.load_ag(conf)
-        train_bbc, val_bbc, test_bbc = self.load_bbc(conf)
-        train_ng, val_ng, test_ng = self.load_ng(conf)
+        if conf.load:
+            train_hp, val_hp, test_hp = self.load_local('Data/huffpost')
+            train_ag, val_ag, test_ag = self.load_local('Data/agnews')
+            train_bbc, val_bbc, test_bbc = self.load_local('Data/bbc')
+            train_ng, val_ng, test_ng = self.load_local("Data/20news")
+
+        else:
+            train_hp, val_hp, test_hp = self.load_hp(conf)
+            train_ag, val_ag, test_ag = self.load_ag(conf)
+            train_bbc, val_bbc, test_bbc = self.load_bbc(conf)
+            train_ng, val_ng, test_ng = self.load_ng(conf)
+        
+        if conf.save:
+            self.save_local('Data/huffpost', train_hp, val_hp, test_hp)
+            self.save_local('Data/agnews', train_ag, val_ag, test_ag)
+            self.save_local('Data/bbc', train_bbc, val_bbc, test_bbc)
+            self.save_local('Data/20news', train_ng, val_ng, test_ng)
+
 
         self.train['hp'] = train_hp
         self.train['ag'] = train_ag
@@ -170,6 +187,27 @@ class LoadMultitaskData():
         self.test['ag'] = test_ag
         self.test['bbc'] = test_bbc
         self.test['ng'] = test_ng
+
+
+    def load_local(self, path):
+        folds = []
+        files = ['/train.json', '/val.json', '/test.json']
+        for filename in files:
+            filepath = path + filename
+            with open(filepath, 'rb') as file:
+                folds.append(json.load(file))
+
+        return folds
+
+
+    def save_local(self, path, train, val, test):
+        folds = (train, val, test)
+        files = ['/train.json', '/val.json', '/test.json']
+        for filename, fold in zip(files, folds):
+            filepath = path + filename
+            with open(filepath, 'wb') as file:
+                json.dump(fold, file)
+                
 
 
     @staticmethod
@@ -210,6 +248,8 @@ class Args():
         self.device = "gpu"
         self.seed = 20
         self.max_text_length = -1
+        self.save = True
+        self.load = False
 
 if __name__ == "__main__":
     conf = Args()
