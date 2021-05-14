@@ -3,6 +3,7 @@ from torch.utils import data
 from transformers import BertTokenizer
 from datasets import load_dataset
 from sklearn.model_selection import train_test_split
+import re
 
 tokenizers = {
     "BERT" : BertTokenizer.from_pretrained('bert-base-uncased',  model_max_length=512)
@@ -38,7 +39,7 @@ class LoadMultitaskData():
             Splits in train (120000) and test (7600). Every sample has the following features: `['label', 'text']` """
         dataset = load_dataset("ag_news")
         train = self.process_ag(dataset["train"], tokenizers[conf.tokenizer], conf.max_text_length)
-        val = None
+        train, val = train_test_split(train, test_size=0.2, random_state=42)
         test = self.process_ag(dataset["test"], tokenizers[conf.tokenizer], conf.max_text_length)
         return train, val, test
 
@@ -74,10 +75,9 @@ class LoadMultitaskData():
         test = [[ex[1], l2i[label[1]]] for ex, label in zip(test_ex, test_labels) if ex[0] == label[0]]
 
         train = self.process_bbc(train, tokenizers[conf.tokenizer], conf.max_text_length)
-        val = None
+        train, val = train_test_split(train, test_size=0.2, random_state=42)
         test = self.process_bbc(test, tokenizers[conf.tokenizer], conf.max_text_length)
 
-        print(len(test), len(test_labels))
         assert len(test) == len(test_labels)
         "The BBC test datafiles were corrupted!"
 
@@ -138,7 +138,7 @@ class LoadMultitaskData():
         """ Extracts the headlines and labels from the 20 newsgroups dataset. """
 
         text = [b[0] for b in data]
-        text = tokenizer.encode(text, padding=True, return_tensors='pt', truncation=True, max_length=512)
+        text = tokenizer(text, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
 
         labels = [b[1] for b in data]
         labels = torch.LongTensor(labels)
@@ -171,6 +171,7 @@ class LoadMultitaskData():
         self.test['bbc'] = test_bbc
         self.test['ng'] = test_ng
 
+
     @staticmethod
     def batch_data(data, bs=2):
         ''' Returns the data in a list of batches of size bs'''
@@ -194,31 +195,31 @@ class MergeMultitaskData(data.Dataset):
         batch['hp'] = self.datasets['hp'][idx]
         batch['ag'] = self.datasets['ag'][idx]
         batch['bbc'] = self.datasets['bbc'][idx]
-        # batch['ng'] = self.datasets['ng'][idx]
+        batch['ng'] = self.datasets['ng'][idx]
         return batch
 
-# class Args():
-#     def __init__(self):
-#         self.path = "models/bert"
-#         self.optimizer = "Adam"
-#         self.lr = 0.001
-#         self.max_epochs = 100
-#         self.finetuned_layers = 0
-#         self.tokenizer = "BERT"
-#         self.batch_size = 64
-#         self.device = "gpu"
-#         self.seed = 20
-#         self.max_text_length = -1
-#
-# if __name__ == "__main__":
-#     conf = Args()
-#     multitask_data = LoadMultitaskData(conf)
-#     train_data = MergeMultitaskData(multitask_data.train)
-#     loader = data.DataLoader(train_data, batch_size = conf.batch_size)
-#     for batch in loader:
-#         print(batch)
-#         break
-#     print("datapoint hp:", multitask_data.train['hp'][0], '\n')
-#     print("datapoint ag:", multitask_data.train['ag'][0], '\n')
-#     print("datapoint bbc:", multitask_data.train['bbc'][0], '\n')
-#     print("datapoint ng:", multitask_data.train['ng'][0], '\n')
+class Args():
+    def __init__(self):
+        self.path = "models/bert"
+        self.optimizer = "Adam"
+        self.lr = 0.001
+        self.max_epochs = 100
+        self.finetuned_layers = 0
+        self.tokenizer = "BERT"
+        self.batch_size = 64
+        self.device = "gpu"
+        self.seed = 20
+        self.max_text_length = -1
+
+if __name__ == "__main__":
+    conf = Args()
+    multitask_data = LoadMultitaskData(conf)
+    train_data = MergeMultitaskData(multitask_data.train)
+    loader = data.DataLoader(train_data, batch_size = conf.batch_size)
+    for batch in loader:
+        print(batch)
+        break
+    print("datapoint hp:", multitask_data.train['hp'][0], '\n')
+    print("datapoint ag:", multitask_data.train['ag'][0], '\n')
+    print("datapoint bbc:", multitask_data.train['bbc'][0], '\n')
+    print("datapoint ng:", multitask_data.train['ng'][0], '\n')

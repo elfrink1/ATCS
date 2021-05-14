@@ -34,12 +34,13 @@ class MultitaskBert(nn.Module):
 
 
     # TODO I am unsure whether we should add the pooling layer, so I have commented it out for now
+    # Chris: I think we should, since the original BERT classifier uses it as well
     def get_task_layers(self, encoder_layers, pooling_layer, num_classes):
         encoder = copy.deepcopy(encoder_layers)
-        # pooler = copy.deepcopy(pooling_layer)
+        pooler = copy.deepcopy(pooling_layer)
         task_layers = nn.Sequential(
             encoder,
-            # pooler,
+            pooler,
             nn.ReLU()
             nn.Linear(768, num_classes)
         )
@@ -60,5 +61,5 @@ class MultitaskBert(nn.Module):
 
         elif task == 'ng':
             c = self.ng(b)
-        
+
         return c
