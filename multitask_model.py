@@ -2,8 +2,10 @@
 # Hard sharing will be used as the multitask framework
 import torch
 import torch.nn as nn
+from torch.utils import data
 from transformers import BertModel
 import copy
+from multitask_data import LoadMultitaskData, MergeMultitaskData
 
 class MultitaskBert(nn.Module):
     def __init__(self, conf):
@@ -13,20 +15,22 @@ class MultitaskBert(nn.Module):
         self.finetuned_layers = [str(self.nr_layers - diff) for diff in range(conf.finetuned_layers)] if conf.finetuned_layers > 0 else []
         self.finetuned_layers.append("pooler")
 
-        for n, p in self.bert.named_parameters():
-            if True in [ftl in n for ftl in self.finetuned_layers]:
-                p.requires_grad = True
-            else:
-                p.requires_grad = False
+        if conf.finetuned_layers != -1:
+            for n, p in self.bert.named_parameters():
+                if True in [ftl in n for ftl in self.finetuned_layers]:
+                    p.requires_grad = True
+                else:
+                    p.requires_grad = False
+        else:
+            pass
 
         embedding, encoder, pooler = [*self.bert.children()]
         tl = -conf.task_layers
-        # print(embedding)
-        # print(encoder.layer)
-        # print(pooler)
-        # jfirjfr
+        self.embedding = embedding
+        self.bert_layer = encoder.layer[0]
+        self.pooler = pooler
 
-        self.shared = nn.Sequential(embedding, encoder.layer[:tl])
+        self.shared_encoders = encoder.layer[:tl]
 
         self.ag = self.get_task_layers(encoder.layer[tl:], pooler, 4)
 
@@ -36,51 +40,59 @@ class MultitaskBert(nn.Module):
 
         self.ng = self.get_task_layers(encoder.layer[tl:], pooler, 6)
 
+        self.task_layers = {'hp': self.hp, 'ag':self.ag, 'bbc':self.bbc, 'ng':self.ng}
+
 
     # TODO I am unsure whether we should add the pooling layer, so I have commented it out for now
     # Chris: I think we should, since the original BERT classifier uses it as well
     def get_task_layers(self, encoder_layers, pooling_layer, num_classes):
-        encoder = copy.deepcopy(encoder_layers)
+        encoders = copy.deepcopy(encoder_layers)
         pooler = copy.deepcopy(pooling_layer)
-        task_layers = nn.Sequential(
-            encoder,
-            pooler,
-            nn.ReLU(),
-            nn.Linear(768, num_classes)
-        )
+        mlp = nn.Linear(768, num_classes)
+        task_layers = nn.ModuleList([*encoders, pooler, mlp])
         return task_layers
 
 
+    def apply_task_layers(self, x, task_layers):
+        encoders = task_layers[:-2]
+        for encoder in encoders:
+            x = encoder(x)[0]        # apply transformer layer
+        x = task_layers[-2](x)       # apply pooler
+        x = task_layers[-1](x)       # apply MLP classifier
+        return x
+
+
     def forward(self, batch):
-        print(batch['hp']['txt'])
-        out_hp = self.shared(batch['hp']['txt']).last_hidden_state
-        out_ag = self.shared(batch['ag']['txt']).last_hidden_state
-        out_bbc = self.shared(batch['bbc']['txt']).last_hidden_state
-        out_ng = self.shared(batch['ng']['txt']).last_hidden_state
+        datasets = list(batch.keys())
+        outputs = []
+        for dataset in datasets:
+            out = self.embedding(batch[dataset]['txt'])
+            for encoder in self.shared_encoders:
+                out = encoder(out)[0]
 
-        out_hp = self.hp(out_hp)
-        out_ag = self.ag(out_ag)
-        out_bbc = self.bbc(out_bbc)
-        out_ng = self.ng(out_ng)
+            out = self.apply_task_layers(out, self.task_layers[dataset])
+            outputs.append(out)
+        return outputs
 
-        return (out_hp, out_ag, out_bbc, out_ng)
-
-class Args():
-    def __init__(self):
-        self.path = "models/bert"
-        self.optimizer = "Adam"
-        self.lr = 0.001
-        self.max_epochs = 100
-        self.finetuned_layers = 0
-        self.task_layers = 1
-        self.tokenizer = "BERT"
-        self.batch_size = 64
-        self.device = "gpu"
-        self.seed = 20
-        self.max_text_length = -1
-        self.save = False
-        self.load = False
-
-if __name__ == "__main__":
-    conf = Args()
-    model = MultitaskBert(conf)
+# class Args():
+#     def __init__(self):
+#         self.path = "models/bert"
+#         self.optimizer = "Adam"
+#         self.lr = 0.001
+#         self.max_epochs = 100
+#         self.finetuned_layers = 0
+#         self.task_layers = 1
+#         self.tokenizer = "BERT"
+#         self.batch_size = 64
+#         self.device = "gpu"
+#         self.seed = 20
+#         self.max_text_length = -1
+#
+# if __name__ == "__main__":
+#     conf = Args()
+#     multitask_data = LoadMultitaskData(conf)
+#     train_data = MergeMultitaskData(multitask_data.train)
+#     loader = data.DataLoader(train_data, batch_size = conf.batch_size)
+#     batch = next(iter(loader))
+#     model = MultitaskBert(conf)
+#     output = model(batch)

@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 
 arg_defaults = {
-    "path" : "models/bert",
+    "path" : "models/bert_multitask",
     "optimizer" : "Adam",
     "lr" : 0.001,
     "max_epochs" : 100,
@@ -12,8 +12,6 @@ arg_defaults = {
     "device" : "gpu",
     "seed" : 20,
     "max_text_length": -1,
-    "save" : False,
-    "load" : False
 }
 
 def get_args():
@@ -45,10 +43,6 @@ def get_args():
                         help="show the progress bar")
     parser.add_argument("--max_text_length", type=int, default=arg_defaults["max_text_length"],
                         help="the max text length in characters (-1: no limit)"  + help_text_default.format(arg_defaults["max_text_length"]))
-    parser.add_argument("--save", type=bool, default=arg_defaults["save"],
-                        help="save the datasets locally if True")
-    parser.add_argument("--load", type=bool, default=arg_defaults["load"],
-                        help="save the datasets locally if True")
 
 
     args = parser.parse_args()

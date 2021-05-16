@@ -138,7 +138,7 @@ class LoadMultitaskData():
         return train, val, test
 
 
-    def process_ng(self, data, tokenizer, local=0):
+    def process_ng(self, data, tokenizer):
         """ Extracts the headlines and labels from the 20 newsgroups dataset. """
         text = [b[0] for b in data]
         text = tokenizer(text, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
@@ -154,24 +154,10 @@ class LoadMultitaskData():
         self.val = {}
         self.test = {}
 
-        if conf.load:
-            train_hp, val_hp, test_hp = self.load_local('Data/huffpost')
-            train_ag, val_ag, test_ag = self.load_local('Data/agnews')
-            train_bbc, val_bbc, test_bbc = self.load_local('Data/bbc')
-            train_ng, val_ng, test_ng = self.load_local("Data/20news")
-
-        else:
-            train_hp, val_hp, test_hp = self.load_hp(conf)
-            train_ag, val_ag, test_ag = self.load_ag(conf)
-            train_bbc, val_bbc, test_bbc = self.load_bbc(conf)
-            train_ng, val_ng, test_ng = self.load_ng(conf)
-        
-        if conf.save:
-            self.save_local('Data/huffpost', train_hp, val_hp, test_hp)
-            self.save_local('Data/agnews', train_ag, val_ag, test_ag)
-            self.save_local('Data/bbc', train_bbc, val_bbc, test_bbc)
-            self.save_local('Data/20news', train_ng, val_ng, test_ng)
-
+        train_hp, val_hp, test_hp = self.load_hp(conf)
+        train_ag, val_ag, test_ag = self.load_ag(conf)
+        train_bbc, val_bbc, test_bbc = self.load_bbc(conf)
+        train_ng, val_ng, test_ng = self.load_ng(conf)
 
         self.train['hp'] = train_hp
         self.train['ag'] = train_ag
@@ -189,33 +175,6 @@ class LoadMultitaskData():
         self.test['ng'] = test_ng
 
 
-    def load_local(self, path):
-        folds = []
-        files = ['/train.json', '/val.json', '/test.json']
-        for filename in files:
-            filepath = path + filename
-            with open(filepath, 'rb') as file:
-                folds.append(json.load(file))
-
-        return folds
-
-
-    def save_local(self, path, train, val, test):
-        folds = (train, val, test)
-        files = ['/train.json', '/val.json', '/test.json']
-        for filename, fold in zip(files, folds):
-            filepath = path + filename
-            with open(filepath, 'wb') as file:
-                json.dump(fold, file)
-                
-
-
-    @staticmethod
-    def batch_data(data, bs=2):
-        ''' Returns the data in a list of batches of size bs'''
-        return [[data[0][i:i+bs], data[1][i:i+bs]] for i in range(0, len(data), bs)]
-
-
 class MergeMultitaskData(data.Dataset):
     def __init__(self, dataset_dict):
         super().__init__()
@@ -226,7 +185,7 @@ class MergeMultitaskData(data.Dataset):
         self.len_ng = len(self.datasets['ng'])
 
     def __len__(self):
-        return self.len_hp + self.len_ag + self.len_bbc
+        return self.len_hp + self.len_ag + self.len_bbc + self.len_ng
 
     def __getitem__(self, idx):
         batch = {}
@@ -248,17 +207,14 @@ class Args():
         self.device = "gpu"
         self.seed = 20
         self.max_text_length = -1
-        self.save = False
-        self.load = False
 
 if __name__ == "__main__":
     conf = Args()
     multitask_data = LoadMultitaskData(conf)
     train_data = MergeMultitaskData(multitask_data.train)
     loader = data.DataLoader(train_data, batch_size = conf.batch_size)
-    for batch in loader:
-        print(batch)
-        break
+
+
     print("datapoint hp:", multitask_data.train['hp'][0], '\n')
     print("datapoint ag:", multitask_data.train['ag'][0], '\n')
     print("datapoint bbc:", multitask_data.train['bbc'][0], '\n')

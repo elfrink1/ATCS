@@ -26,16 +26,13 @@ class MultitaskTrainer(pl.LightningModule):
 
         return [optimizer], [scheduler]
 
-
-# TODO Weighted sum of losses
-
     def training_step(self, batch, batch_idx):
         out_ = self.model(batch)
         loss_hp = self.loss_module(out_[0], batch['hp']["label"])
         loss_ag = self.loss_module(out_[1], batch['ag']["label"])
         loss_bbc = self.loss_module(out_[2], batch['bbc']["label"])
         loss_ng = self.loss_module(out_[3], batch['ng']["label"])
-        total_loss = loss_hp + loss_ag + loss_bbc + loss_ng
+        avg_loss = (loss_hp + loss_ag + loss_bbc + loss_ng) / 4
 
         acc_hp = (out_[0].argmax(dim=-1) == batch['hp']["label"]).float().mean()
         acc_ag = (out_[1].argmax(dim=-1) == batch['ag']["label"]).float().mean()
@@ -47,13 +44,14 @@ class MultitaskTrainer(pl.LightningModule):
         self.log('train_acc_ag', acc_ag, on_step=False, on_epoch=True)
         self.log('train_acc_bbc', acc_bbc, on_step=False, on_epoch=True)
         self.log('train_acc_ng', acc_ng, on_step=False, on_epoch=True)
-        self.log('train_acc', avg_train_acc, on_step=False, on_epoch=True)
+        self.log('avg_train_acc', avg_train_acc, on_step=False, on_epoch=True)
 
         self.log('train_loss_hp', loss_hp)
         self.log('train_loss_ag', loss_ag)
         self.log('train_loss_bbc', loss_bbc)
         self.log('train_loss_ng', loss_ng)
-        return total_loss
+        self.log('avg_train_loss', avg_loss)
+        return avg_loss
 
     def validation_step(self, batch, batch_idx):
         """ Simply calculate the accuracy and log it. """
