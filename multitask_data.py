@@ -20,10 +20,11 @@ class LoadMultitaskData():
         """ Loads the HuffPost (hp) dataset from [Hugging Face](https://huggingface.co/datasets/Fraser/news-category-dataset)
             Splits in train (160682), validation (10043) and test (30128). Every sample has the following features:
             `['authors', 'category', 'category_num', 'date', 'headline', 'link', 'short_description']` """
-        dataset = load_dataset("Fraser/news-category-dataset")
-        train = self.process_hp(dataset["train"], tokenizers[conf.tokenizer], conf.max_text_length)
-        val = self.process_hp(dataset["validation"], tokenizers[conf.tokenizer], conf.max_text_length)
-        test = self.process_hp(dataset["test"], tokenizers[conf.tokenizer], conf.max_text_length)
+        
+        dataset = load_dataset("Fraser/news-category-dataset") 
+        train = self.process_hp(dataset["train"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
+        val = self.process_hp(dataset["validation"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
+        test = self.process_hp(dataset["test"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
         return train, val, test
 
 
@@ -40,10 +41,12 @@ class LoadMultitaskData():
     def load_ag(self, conf):
         """ Loads the AG news dataset from [Hugging Face](https://huggingface.co/datasets/ag_news)
             Splits in train (120000) and test (7600). Every sample has the following features: `['label', 'text']` """
+
         dataset = load_dataset("ag_news")
-        train = self.process_ag(dataset["train"], tokenizers[conf.tokenizer], conf.max_text_length)
+        train = self.process_ag(dataset["train"][:(conf.sample * 5)], tokenizers[conf.tokenizer], conf.max_text_length)
         train, val = train_test_split(train, test_size=0.2, random_state=42)
-        test = self.process_ag(dataset["test"], tokenizers[conf.tokenizer], conf.max_text_length)
+        train = train[:conf.sample]
+        test = self.process_ag(dataset["test"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
         return train, val, test
 
 
@@ -63,22 +66,24 @@ class LoadMultitaskData():
             Splits in train (1490) and test (735)."""
         l2i = {'entertainment':0, 'business':1, 'politics':2, 'sport':3, 'tech':4}
         # first row are colum names: ['ArticleId' 'Text' 'Category']
+        print('\nLoading BBC Dataset\n')
         with open('Data/BBC/Train/BBC News Train.csv') as train_file:
-            train = [line.replace("\n", "").split(",") for line in train_file][1:]
+            train = [line.replace("\n", "").split(",") for line in train_file][1:(conf.sample*5+1)]
             train = [[ex[1], l2i[ex[2]]] for ex in train]
 
         # first row are colum names: ['ArticleId' 'Text']
         with open(r'Data/BBC/Test/BBC News Test.csv') as test_file:
-            test_ex = [line.replace("\n", "").split(",") for line in test_file][1:]
+            test_ex = [line.replace("\n", "").split(",") for line in test_file][1:conf.sample+1]
 
         # first row are colum names: ['ArticleId' 'Category']
         with open(r'Data/BBC/Test/BBC News Sample Solution.csv') as test_labels_file:
-            test_labels = [line.replace("\n", "").split(",") for line in test_labels_file][1:]
+            test_labels = [line.replace("\n", "").split(",") for line in test_labels_file][1:conf.sample+1]
 
         test = [[ex[1], l2i[label[1]]] for ex, label in zip(test_ex, test_labels) if ex[0] == label[0]]
-
+        
         train = self.process_bbc(train, tokenizers[conf.tokenizer], conf.max_text_length)
         train, val = train_test_split(train, test_size=0.2, random_state=42)
+        train = train[:conf.sample]
         test = self.process_bbc(test, tokenizers[conf.tokenizer], conf.max_text_length)
 
         assert len(test) == len(test_labels)
@@ -131,9 +136,9 @@ class LoadMultitaskData():
 
         train_val, test = train_test_split(text, test_size=0.2, random_state=42)
         train, val = train_test_split(train_val, test_size=0.1, random_state=42)
-        train = self.process_ng(train, tokenizers[conf.tokenizer])
-        val = self.process_ng(val, tokenizers[conf.tokenizer])
-        test = self.process_ng(test, tokenizers[conf.tokenizer])
+        train = self.process_ng(train[:conf.sample], tokenizers[conf.tokenizer])
+        val = self.process_ng(val[:conf.sample], tokenizers[conf.tokenizer])
+        test = self.process_ng(test[:conf.sample], tokenizers[conf.tokenizer])
 
         return train, val, test
 
@@ -207,6 +212,7 @@ class Args():
         self.device = "gpu"
         self.seed = 20
         self.max_text_length = -1
+        self.sample = None
 
 if __name__ == "__main__":
     conf = Args()

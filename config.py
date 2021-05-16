@@ -12,6 +12,7 @@ arg_defaults = {
     "device" : "gpu",
     "seed" : 20,
     "max_text_length": -1,
+    "sample" : None
 }
 
 def get_args():
@@ -43,6 +44,8 @@ def get_args():
                         help="show the progress bar")
     parser.add_argument("--max_text_length", type=int, default=arg_defaults["max_text_length"],
                         help="the max text length in characters (-1: no limit)"  + help_text_default.format(arg_defaults["max_text_length"]))
+    parser.add_argument("--sample", type=int, default=arg_defaults["sample"],
+                        help="Amount of datapoints used in each split in a dataset. Recommended for testing." + help_text_default.format(arg_defaults["sample"]))
 
 
     args = parser.parse_args()
