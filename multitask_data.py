@@ -43,7 +43,8 @@ class LoadMultitaskData():
             Splits in train (120000) and test (7600). Every sample has the following features: `['label', 'text']` """
 
         dataset = load_dataset("ag_news")
-        train = self.process_ag(dataset["train"][:(conf.sample * 5)], tokenizers[conf.tokenizer], conf.max_text_length)
+        sample = conf.sample * 5 if conf.sample is not None else None
+        train = self.process_ag(dataset["train"][:sample], tokenizers[conf.tokenizer], conf.max_text_length)
         train, val = train_test_split(train, test_size=0.2, random_state=42)
         train = train[:conf.sample]
         test = self.process_ag(dataset["test"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
@@ -67,17 +68,19 @@ class LoadMultitaskData():
         l2i = {'entertainment':0, 'business':1, 'politics':2, 'sport':3, 'tech':4}
         # first row are colum names: ['ArticleId' 'Text' 'Category']
         print('\nLoading BBC Dataset\n')
+        train_sample = (conf.sample * 5 + 1) if conf.sample is not None else None
         with open('Data/BBC/Train/BBC News Train.csv') as train_file:
-            train = [line.replace("\n", "").split(",") for line in train_file][1:(conf.sample*5+1)]
+            train = [line.replace("\n", "").split(",") for line in train_file][1:train_sample]
             train = [[ex[1], l2i[ex[2]]] for ex in train]
 
         # first row are colum names: ['ArticleId' 'Text']
+        test_sample = conf.sample + 1 if conf.sample is not None else None
         with open(r'Data/BBC/Test/BBC News Test.csv') as test_file:
-            test_ex = [line.replace("\n", "").split(",") for line in test_file][1:conf.sample+1]
+            test_ex = [line.replace("\n", "").split(",") for line in test_file][1:test_sample]
 
         # first row are colum names: ['ArticleId' 'Category']
         with open(r'Data/BBC/Test/BBC News Sample Solution.csv') as test_labels_file:
-            test_labels = [line.replace("\n", "").split(",") for line in test_labels_file][1:conf.sample+1]
+            test_labels = [line.replace("\n", "").split(",") for line in test_labels_file][1:test_sample]
 
         test = [[ex[1], l2i[label[1]]] for ex, label in zip(test_ex, test_labels) if ex[0] == label[0]]
         
@@ -194,10 +197,10 @@ class MergeMultitaskData(data.Dataset):
 
     def __getitem__(self, idx):
         batch = {}
-        batch['hp'] = self.datasets['hp'][idx]
-        batch['ag'] = self.datasets['ag'][idx]
-        batch['bbc'] = self.datasets['bbc'][idx]
-        batch['ng'] = self.datasets['ng'][idx]
+        batch['hp'] = self.datasets['hp'][idx%self.len_hp]
+        batch['ag'] = self.datasets['ag'][idx%self.len_ag]
+        batch['bbc'] = self.datasets['bbc'][idx%self.len_bbc]
+        batch['ng'] = self.datasets['ng'][idx%self.len_ng]
         return batch
 
 class Args():
@@ -212,7 +215,7 @@ class Args():
         self.device = "gpu"
         self.seed = 20
         self.max_text_length = -1
-        self.sample = None
+        self.sample = 256
 
 if __name__ == "__main__":
     conf = Args()

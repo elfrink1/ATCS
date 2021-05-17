@@ -12,7 +12,8 @@ arg_defaults = {
     "device" : "gpu",
     "seed" : 20,
     "max_text_length": -1,
-    "sample" : None
+    "sample" : None,
+    'progress_bar' : True
 }
 
 def get_args():

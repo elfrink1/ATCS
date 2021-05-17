@@ -14,7 +14,7 @@ from config import get_args
 def train_multitask(loader, conf):
     """ Train the BERT model in a multitask framework with all datasets.
         The model that performs best on the validation set is saved."""
-    os.makedirs
+
     trainer = pl.Trainer(default_root_dir=os.path.join(conf.path, conf.optimizer, conf.name),
                          checkpoint_callback=ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc"),
                          gpus=1 if "gpu" in str(conf.device) else 0,
