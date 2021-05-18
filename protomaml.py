@@ -6,7 +6,7 @@ import torch
 
 from pytorch_lightning.callbacks import ModelCheckpoint
 from transformers import BertTokenizer
-from proto_data import ProtoDataset
+from proto_data2 import ProtoDataset
 from proto_trainer import ProtoTrainer
 
 
@@ -26,40 +26,45 @@ class config():
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # bert h_parameters
-        self.finetuned_layers = 2
+        self.finetuned_layers = 5
         self.mlp_in = 768
+        self.hidden = 192
 
          # maml h_parameters
-        self.inner_steps = 20
-        self.meta_batch = 2
-        self.inner_lr = 0.1 #TODO: change
-        self.outer_lr = 0.1
-        self.max_epochs = 50
+        self.inner_steps = 5
+        self.meta_batch = 12
+        self.eval_batch = 5
+        self.inner_lr = 0.001 #TODO: change
+        self.outer_lr = 0.01
+        self.max_epochs = 10000
 
         # episode h_parameters
         self.way = 5
         self.shot = 5
-        self.query_size = 5
+        self.query_size = 10
+        self.max_eval_size = 150
+    
 
-        self.debug = True
+        # debug stuff
+        self.debug = False
 
        
-def train_protomaml(config, loader):
-    trainer = pl.Trainer(default_root_dir=os.path.join('./Model'),
-                         checkpoint_callback = ModelCheckpoint(save_weights_only=True, mode="max", monitor="train_query_acc"), #monitor="val_query_acc"),
-                         gpus=1,
-                         max_epochs=config.max_epochs,                                            
-                         progress_bar_refresh_rate=1) 
-    
-    trainer.logger._log_graph = True
-    trainer.logger._default_hp_metric = None
 
-    pl.seed_everything(config.seed)
-    model = ProtoTrainer(config)
-    model.train()
-    model.model.bert.train()
+
+
+def train_protomaml(config, dataset):
     
-    trainer.fit(model, loader['train'])
+    model = ProtoTrainer(config).to(config.device)
+
+    eval_acc = []
+
+    for i in range(config.max_epochs):
+        batch = dataset.train.train_batch(config.meta_batch)
+        model.meta_train(batch)
+        if i%1 == 0:
+            batch = dataset.val.test_batch(config.eval_batch)
+            eval_acc.append(model.eval_model(batch))
+
     #test_result = trainer.test(model, loader['test'])
 
     return model, test_result
@@ -68,23 +73,14 @@ def train_protomaml(config, loader):
 
 
 if __name__ == "__main__":
-    config = config()
+    config = config() 
 
     
 
-    dataset = ProtoDataset(config, 'hp')
+    dataset = ProtoDataset(config, 'yahoo')
 
 
-
-    loader = {
-        'train' : data.DataLoader(dataset.train, batch_size=config.meta_batch),
-        'val'   : data.DataLoader(dataset.val, batch_size=config.meta_batch),
-        'test'  : data.DataLoader(dataset.test, batch_size=config.meta_batch)
-    }
-    
-
-
-    model, results = train_protomaml(config, loader)
+    #model, results = train_protomaml(config, dataset)
 
 
         
