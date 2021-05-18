@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from re import M
 
 arg_defaults = {
     "path" : "models/bert_multitask",
@@ -13,7 +14,8 @@ arg_defaults = {
     "seed" : 20,
     "max_text_length": -1,
     "sample" : None,
-    'progress_bar' : True
+    'progress_bar' : True,
+    "num_workers" : 4
 }
 
 def get_args():
@@ -47,7 +49,8 @@ def get_args():
                         help="the max text length in characters (-1: no limit)"  + help_text_default.format(arg_defaults["max_text_length"]))
     parser.add_argument("--sample", type=int, default=arg_defaults["sample"],
                         help="Amount of datapoints used in each split in a dataset. Recommended for testing." + help_text_default.format(arg_defaults["sample"]))
-
+    parser.add_argument("--num_workers", type=int, default=arg_defaults['num_workers'],
+                        help="The number of workers/processes on the cpu" + help_text_default.format(arg_defaults["max_text_length"]))
 
     args = parser.parse_args()
     return args
