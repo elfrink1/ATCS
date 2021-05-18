@@ -18,4 +18,4 @@ cd $HOME/atcs2
 # Activate your environment
 source activate atcs2
 
-python train_bert.py hp1.0e-4 hp 41 --lr 0.00001 --max_text_length 512 --batch_size 32 --finetuned_layers -1 
+srun python -u train_bert.py hp1.0e-4 hp 41 --lr 0.00001 --max_text_length 512 --batch_size 32 --finetuned_layers -1 
