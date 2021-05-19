@@ -100,8 +100,8 @@ class Dataset():
             '18828_talk.religion.misc']
 
             for i, category in enumerate(categories):
-                data = load_dataset("newsgroup", subcat)['train']['text']
-                text.append([[ex.split('\n', 2)[2], i] for ex in data])
+                data = load_dataset("newsgroup", category)['train']['text']
+                text += [[" ".join(ex.split('\n', 2)[2].split()[:512]), i] for ex in data]
 
 
         else:
@@ -116,7 +116,7 @@ class Dataset():
             for i, category in enumerate([politics, science, religion, computer, sports, sale]):
                 for subcat in category:
                     data = load_dataset("newsgroup", subcat)['train']['text']
-                    text += [[ex.split('\n', 2)[2], i] for ex in data]
+                    text += [[" ".join(ex.split('\n', 2)[2].split()[:512]), i] for ex in data]
 
         
         train_val, test = train_test_split(text, test_size=0.2, random_state=42)
@@ -128,10 +128,8 @@ class Dataset():
 
     def process_ng(self, data, tokenizer, max_text_length=-1):
         """ Extracts the headlines and labels from the 20 newsgroups dataset. """
-        assert 1 == 0
-        "Not working"
-        maxlenght = [b[0][:max_text_length] for b in data]
-        text = tokenizer([b[0] for b in maxlenght], padding=True, return_tensors='pt')["input_ids"]
+        text = [b[0] for b in data]
+        text = tokenizer(text, padding=True, return_tensors='pt', truncation=True, max_length=512)["input_ids"]
         labels = torch.LongTensor([b[1] for b in data])
 
         return [{"txt" : h, "label" : l} for h, l in zip(text, labels)]
