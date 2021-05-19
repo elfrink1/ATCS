@@ -4,6 +4,8 @@
 # Follow the steps on this website: https://github.com/Kaggle/kaggle-api#api-credentials
 
 kaggle competitions download -c learn-ai-bbc
+mkdir -p Data
+
 mv learn-ai-bbc.zip Data/
 cd Data/
 unzip learn-ai-bbc.zip
