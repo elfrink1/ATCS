@@ -38,13 +38,11 @@ class MultitaskBert(nn.Module):
 
         self.bbc = self.get_task_layers(encoder.layer[tl:], pooler, 5)
 
-        self.ng = self.get_task_layers(encoder.layer[tl:], pooler, 6)
+        self.few_shot_head = self.get_task_layers(encoder.layer[tl:], pooler, conf.hidden)
 
-        self.task_layers = {'hp': self.hp, 'ag':self.ag, 'bbc':self.bbc, 'ng':self.ng}
+        self.task_layers = {'hp': self.hp, 'ag':self.ag, 'bbc':self.bbc}
 
 
-    # TODO I am unsure whether we should add the pooling layer, so I have commented it out for now
-    # Chris: I think we should, since the original BERT classifier uses it as well
     def get_task_layers(self, encoder_layers, pooling_layer, num_classes):
         encoders = copy.deepcopy(encoder_layers)
         pooler = copy.deepcopy(pooling_layer)
@@ -63,7 +61,7 @@ class MultitaskBert(nn.Module):
 
 
     def forward(self, batch):
-        datasets = list(batch.keys())
+        datasets = list(self.task_layers.keys())
         outputs = []
         for dataset in datasets:
             out = self.embedding(batch[dataset]['txt'])
@@ -73,6 +71,7 @@ class MultitaskBert(nn.Module):
             out = self.apply_task_layers(out, self.task_layers[dataset])
             outputs.append(out)
         return outputs
+
 
 # class Args():
 #     def __init__(self):

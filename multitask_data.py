@@ -20,8 +20,8 @@ class LoadMultitaskData():
         """ Loads the HuffPost (hp) dataset from [Hugging Face](https://huggingface.co/datasets/Fraser/news-category-dataset)
             Splits in train (160682), validation (10043) and test (30128). Every sample has the following features:
             `['authors', 'category', 'category_num', 'date', 'headline', 'link', 'short_description']` """
-        
-        dataset = load_dataset("Fraser/news-category-dataset") 
+
+        dataset = load_dataset("Fraser/news-category-dataset")
         train = self.process_hp(dataset["train"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
         val = self.process_hp(dataset["validation"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
         test = self.process_hp(dataset["test"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
@@ -83,7 +83,7 @@ class LoadMultitaskData():
             test_labels = [line.replace("\n", "").split(",") for line in test_labels_file][1:test_sample]
 
         test = [[ex[1], l2i[label[1]]] for ex, label in zip(test_ex, test_labels) if ex[0] == label[0]]
-        
+
         train = self.process_bbc(train, tokenizers[conf.tokenizer], conf.max_text_length)
         train, val = train_test_split(train, test_size=0.2, random_state=42)
         train = train[:conf.sample]
@@ -105,58 +105,6 @@ class LoadMultitaskData():
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
 
 
-    # See newsgroup.txt for info
-    def load_ng(self, conf):
-        twenty = False # placeholder for conf.twenty
-        text = []
-
-        if twenty:
-            categories = ['18828_alt.atheism', '18828_comp.graphics', '18828_comp.os.ms-windows.misc', '18828_comp.sys.ibm.pc.hardware',
-            '18828_comp.sys.mac.hardware', '18828_comp.windows.x', '18828_misc.forsale', '18828_rec.autos', '18828_rec.motorcycles',
-            '18828_rec.sport.baseball', '18828_rec.sport.hockey', '18828_sci.crypt', '18828_sci.electronics', '18828_sci.med', '18828_sci.space',
-            '18828_soc.religion.christian', '18828_talk.politics.guns', '18828_talk.politics.mideast', '18828_talk.politics.misc',
-            '18828_talk.religion.misc']
-
-            for i, category in enumerate(categories):
-                data = load_dataset("newsgroup", category)['train']['text']
-                text += [[" ".join(ex.split('\n', 2)[2].split()[:512]), i] for ex in data]
-
-
-        else:
-            politics = ['18828_talk.politics.guns', '18828_talk.politics.mideast', '18828_talk.politics.misc'] # Label 0
-            science = ['18828_sci.crypt', '18828_sci.electronics', '18828_sci.med', '18828_sci.space'] # 1
-            religion = ['18828_alt.atheism', '18828_soc.religion.christian', '18828_talk.religion.misc'] # 2
-            computer = ['18828_comp.graphics', '18828_comp.os.ms-windows.misc', '18828_comp.sys.ibm.pc.hardware',
-            '18828_comp.sys.mac.hardware', '18828_comp.windows.x'] # 3
-            sports = ['18828_rec.autos', '18828_rec.motorcycles', '18828_rec.sport.baseball', '18828_rec.sport.hockey'] # 4
-            sale = ['18828_misc.forsale'] # 5
-
-            for i, category in enumerate([politics, science, religion, computer, sports, sale]):
-                for subcat in category:
-                    data = load_dataset("newsgroup", subcat)['train']['text']
-                    text += [[" ".join(ex.split('\n', 2)[2].split()[:512]), i] for ex in data]
-
-
-        train_val, test = train_test_split(text, test_size=0.2, random_state=42)
-        train, val = train_test_split(train_val, test_size=0.1, random_state=42)
-        train = self.process_ng(train[:conf.sample], tokenizers[conf.tokenizer])
-        val = self.process_ng(val[:conf.sample], tokenizers[conf.tokenizer])
-        test = self.process_ng(test[:conf.sample], tokenizers[conf.tokenizer])
-
-        return train, val, test
-
-
-    def process_ng(self, data, tokenizer):
-        """ Extracts the headlines and labels from the 20 newsgroups dataset. """
-        text = [b[0] for b in data]
-        text = tokenizer(text, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
-
-        labels = [b[1] for b in data]
-        labels = torch.LongTensor(labels)
-
-        return [{"txt" : h, "label" : l} for h, l in zip(text, labels)]
-
-
     def load_datasets(self, conf):
         self.train = {}
         self.val = {}
@@ -165,22 +113,22 @@ class LoadMultitaskData():
         train_hp, val_hp, test_hp = self.load_hp(conf)
         train_ag, val_ag, test_ag = self.load_ag(conf)
         train_bbc, val_bbc, test_bbc = self.load_bbc(conf)
-        train_ng, val_ng, test_ng = self.load_ng(conf)
+        # train_ng, val_ng, test_ng = self.load_ng(conf)
 
         self.train['hp'] = train_hp
         self.train['ag'] = train_ag
         self.train['bbc'] = train_bbc
-        self.train['ng'] = train_ng
+        # self.train['ng'] = train_ng
 
         self.val['hp'] = val_hp
         self.val['ag'] = val_ag
         self.val['bbc'] = val_bbc
-        self.val['ng'] = val_ng
+        # self.val['ng'] = val_ng
 
         self.test['hp'] = test_hp
         self.test['ag'] = test_ag
         self.test['bbc'] = test_bbc
-        self.test['ng'] = test_ng
+        # self.test['ng'] = test_ng
 
 
 class MergeMultitaskData(data.Dataset):
@@ -190,41 +138,109 @@ class MergeMultitaskData(data.Dataset):
         self.len_hp = len(self.datasets['hp'])
         self.len_ag = len(self.datasets['ag'])
         self.len_bbc = len(self.datasets['bbc'])
-        self.len_ng = len(self.datasets['ng'])
+        # self.len_ng = len(self.datasets['ng'])
 
     def __len__(self):
-        return self.len_hp + self.len_ag + self.len_bbc + self.len_ng
+        return self.len_hp + self.len_ag + self.len_bbc
 
     def __getitem__(self, idx):
         batch = {}
         batch['hp'] = self.datasets['hp'][idx%self.len_hp]
         batch['ag'] = self.datasets['ag'][idx%self.len_ag]
         batch['bbc'] = self.datasets['bbc'][idx%self.len_bbc]
-        batch['ng'] = self.datasets['ng'][idx%self.len_ng]
+        # batch['ng'] = self.datasets['ng'][idx%self.len_ng]
         return batch
 
-class Args():
-    def __init__(self):
-        self.path = "models/bert"
-        self.optimizer = "Adam"
-        self.lr = 0.001
-        self.max_epochs = 100
-        self.finetuned_layers = 0
-        self.tokenizer = "BERT"
-        self.batch_size = 64
-        self.device = "gpu"
-        self.seed = 20
-        self.max_text_length = -1
-        self.sample = 256
+class FewShotEvaluationSet():
+    def __init__(self, config, dataset):
+        self.config = config
+        self.dataset = dataset
+        self.set_path = os.path.join(self.config.data_path, dataset)
 
-if __name__ == "__main__":
-    conf = Args()
-    multitask_data = LoadMultitaskData(conf)
-    train_data = MergeMultitaskData(multitask_data.train)
-    loader = data.DataLoader(train_data, batch_size = conf.batch_size)
+        self.train = self.Split(config)
+        self.val = self.Split(config)
+        self.test = self.Split(config)
+
+        if dataset == "hp":
+            self.load_data(self.process_hp)
+        if dataset == "bbc":
+            self.load_data(self.process_bbc)
+        if dataset == "ag":
+            self.load_data(self.process_ag)
+        if dataset == "yahoo":
+            self.load_data(self.process_yahoo)
+        if dataset == "dbpedia":
+            self.load_data(self.process_dbpedia)
+        if dataset == "ng":
+            self.load_data(self.process_ng)
+
+    class Split(Dataset):
+        def __init__(self, config):
+            self.config = config
+            self.data = {} # dict of class_id: [sentences]
+
+        def test_batch(self, batch_size):
+            return [self.testing_episode() for i in range(batch_size)]
+
+        def testing_episode(self):
+            class_ids = random.sample(self.data.keys(), self.config.way) # sample classes, n = way
+            query, support = [], []
+
+            smallest_set = min([len(self.data[class_id]) for class_id in class_ids])
+            eval_size = min(smallest_set, self.config.max_eval_size)
+
+            for class_id in class_ids: # for all classes
+                sample_ids = random.sample(range(len(self.data[class_id])), eval_size + self.config.shot)
+
+                support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[0:self.config.shot]])
+                query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[self.config.shot:]])
+
+            return support, query, eval_size
 
 
-    print("datapoint hp:", multitask_data.train['hp'][0], '\n')
-    print("datapoint ag:", multitask_data.train['ag'][0], '\n')
-    print("datapoint bbc:", multitask_data.train['bbc'][0], '\n')
-    print("datapoint ng:", multitask_data.train['ng'][0], '\n')
+    # Download, process, save, remove raw dataset
+    def load_data(self, process_fn):
+        if os.path.exists(self.set_path):
+            self.load_splits()
+        else:
+            #os.mkdir(self.config.cache_path)
+            process_fn()
+            #shutil.rmtree(self.config.cache_path) # remove cache
+
+
+    def save_splits(self):
+        os.mkdir(self.set_path)
+        torch.save(self.train.data, os.path.join(self.set_path, 'train.pt'))
+        torch.save(self.val.data, os.path.join(self.set_path, 'val.pt'))
+        torch.save(self.test.data, os.path.join(self.set_path, 'test.pt'))
+
+    def load_splits(self):
+        self.train.data = torch.load(os.path.join(self.set_path, 'train.pt'))
+        self.val.data = torch.load(os.path.join(self.set_path, 'val.pt'))
+        self.test.data = torch.load(os.path.join(self.set_path, 'test.pt'))
+
+# class Args():
+#     def __init__(self):
+#         self.path = "models/bert"
+#         self.optimizer = "Adam"
+#         self.lr = 0.001
+#         self.max_epochs = 100
+#         self.finetuned_layers = 0
+#         self.tokenizer = "BERT"
+#         self.batch_size = 64
+#         self.device = "gpu"
+#         self.seed = 20
+#         self.max_text_length = -1
+#         self.sample = 256
+#
+# if __name__ == "__main__":
+#     conf = Args()
+#     multitask_data = LoadMultitaskData(conf)
+#     train_data = MergeMultitaskData(multitask_data.train)
+#     loader = data.DataLoader(train_data, batch_size = conf.batch_size)
+#
+#
+#     print("datapoint hp:", multitask_data.train['hp'][0], '\n')
+#     print("datapoint ag:", multitask_data.train['ag'][0], '\n')
+#     print("datapoint bbc:", multitask_data.train['bbc'][0], '\n')
+#     print("datapoint ng:", multitask_data.train['ng'][0], '\n')
