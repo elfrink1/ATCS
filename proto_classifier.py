@@ -25,7 +25,7 @@ class BertClassifier(nn.Module):
 
 
     def forward(self, batch):
-        b = self.bert(batch['input_ids'].squeeze(), batch['attention_mask'].squeeze()).pooler_output
+        b = self.bert(batch['input_ids'], batch['attention_mask']).pooler_output
         c = self.mlp(b)
         return c
 

@@ -1,148 +1,172 @@
 from datasets import load_dataset
 from torch.utils.data import Dataset
+from operator import itemgetter
 import random
 import torch
 import numpy as np
 import os
 import shutil
+import csv
+import proto_utils
+
+
+
+
+class Episode():
+    def __init__(self, n_classes, support, query):
+        self.n_classes = n_classes
+        self.support = self.Set(support, n_classes)    
+        self.query = self.Set(query, n_classes)
+        self.query.shuffle()
+
+    class Set():
+        def __init__(self, text, n_classes):
+            self.text = np.array(text)
+            self.n_classes = n_classes
+            self.len = len(text)
+            self.labels = torch.flatten(torch.tensor([[i] * int(self.len/n_classes) for i in range(n_classes)]))
+            self.idx = torch.arange(self.len)
+
+        def shuffle(self):
+            self.idx = self.idx[torch.randperm(self.idx.shape[0])]
+
+        def get_batch(self, config, batch_size=-1, tokenize=True, shuffle=False):
+            batch_size = self.len if batch_size == -1 else batch_size
+            if shuffle: self.shuffle()
+
+            for i in range(0, self.len, batch_size):
+                tb = self.text[self.idx[i:min(i + batch_size, self.len)]].tolist()
+                lb = self.labels[self.idx[i:min(i + batch_size, self.len)]]            
+                if tokenize == True:
+                    tb = proto_utils.tokenize(config, tb)
+    
+                yield tb.to(config.device), lb.to(config.device)
 
 
 
 
 
-
-# Access splits with Dataset.train/val/test
-# split[class_id] = [sentences]
-class ProtoDataset():
+# data[class_id] = [sentences]
+class DataLoader():
     def __init__(self, config, dataset):
         self.config = config
         self.dataset = dataset
-        self.set_path = os.path.join(self.config.data_path, dataset)
+        self.set_path = os.path.join(config.data_path, dataset)
+        self.task = self.TaskClass()
 
-        self.train = self.Split(config)
-        self.val = self.Split(config)
-        self.test = self.Split(config)
-
-        if dataset == "hp":
-            self.load_data(self.process_hp)
-        if dataset == "bbc":
-            self.load_data(self.process_bbc)
-        if dataset == "ag":
-            self.load_data(self.process_ag)
-        if dataset == "yahoo":
-            self.load_data(self.process_yahoo)
-        if dataset == "dbpedia":
-            self.load_data(self.process_dbpedia)
-
-    class Split(Dataset):
-        def __init__(self, config):
-            self.config = config
-            self.data = {} # dict of class_id: [sentences]
-
-        def train_batch(self, batch_size):
-            return [self.sample_episode() for i in range(batch_size)]
-
-        def test_batch(self, batch_size):
-            return [self.testing_episode() for i in range(batch_size)]
+        if dataset == "hp":#200k
+            self.init_data(self.process_hp)
+        if dataset == "bbc":#1490
+            self.init_data(self.process_bbc)
+        if dataset == "ag":#1M
+            self.init_data(self.process_ag)
+        if dataset == "yahoo":#1M
+            self.init_data(self.process_yahoo)
+        if dataset == "dbpedia":#40k
+            self.init_data(self.process_dbpedia)
+        if dataset == "ng":
+            self.init_data(self.process_ng)
 
 
+    class TaskClass():
+        def __init__(self):
+            self.name = ""
+            self.data = {}
 
-        def testing_episode(self):
-            class_ids = random.sample(self.data.keys(), self.config.way) # sample classes, n = way
-            query, support = [], []
-            
-            smallest_set = min([len(self.data[class_id]) for class_id in class_ids])
-            eval_size = min(smallest_set, self.config.max_eval_size)
-
-            for class_id in class_ids: # for all classes
-                sample_ids = random.sample(range(len(self.data[class_id])), eval_size + self.config.shot)
-                
-                support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[0:self.config.shot]]) 
-                query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[self.config.shot:]]) 
-        
-            return support, query, eval_size
-
-
-        # returns two lists of [tokenized_sentences]
-        def sample_episode(self):
-            #config.way = random.randint(config.min_way, min(config.max_way, len(self.data))) # amount of ways, min_ways <= n <= min(max_ways, n_classes)
-            class_ids = random.sample(self.data.keys(), self.config.way) # sample classes, n = way
+        def sample_episode(self, config):
+            way = random.randint(config.min_way, min(config.max_way, len(self.data))) # amount of ways, min_ways <= n <= min(max_ways, n_classes)        
+            class_ids = random.sample(range(len(self.data)), way) # sample classes, n = way
             query, support = [], []
             
             for class_id in class_ids: # for all classes
-                sample_ids = random.sample(range(len(self.data[class_id])), self.config.query_size + self.config.shot) # number of sampled ids = n_query + n_support
-                
-                query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[:self.config.query_size]]) # class_query = first sampled ids, n = query_size
-                support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[self.config.query_size:]]) # class_support = last sampled ids, n = shot
+                sample_ids = random.sample(range(len(self.data[class_id])), config.query_size + config.shot) # number of sampled ids = n_query + n_support              
+                support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[:config.shot]]) # class_support = first sampled ids, n = shot
+                query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[config.shot:]]) # class_query = last sampled ids, n = query_size
+            
+            return Episode(way, support, query)      
 
-            return support, query#, class_ids
+        def sample_eval_episode(self, config):
+            way = min(config.eval_way, len(self.data))
+            class_ids = random.sample(range(len(self.data)), way)
+            query, support = [], []
+   
+            for class_id in class_ids:
+                sample_ids = random.sample(range(len(self.data[class_id])), config.class_eval + config.shot) #class_eval != query_size
+                support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[:config.shot]]) 
+                query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[config.shot:]]) 
 
-
-
-
-
+            return Episode(way, support, query)       
 
 
     # Download, process, save, remove raw dataset
-    def load_data(self, process_fn):
+    def init_data(self, process_fn):
         if os.path.exists(self.set_path):
-            self.load_splits()
+            self.load_data()
         else:
-            #os.mkdir(self.config.cache_path)
+            os.mkdir(self.config.cache_path)
             process_fn()
-            #shutil.rmtree(self.config.cache_path) # remove cache
+            shutil.rmtree(self.config.cache_path) # remove cache
 
 
-    def save_splits(self):
+    def load_data(self):
+        self.task = torch.load(os.path.join(self.set_path, 'train.pt'))
+
+    def save_data(self, name, data):
+        self.task.name = name
+        self.task.data = data
         os.mkdir(self.set_path)
-        torch.save(self.train.data, os.path.join(self.set_path, 'train.pt'))
-        torch.save(self.val.data, os.path.join(self.set_path, 'val.pt'))
-        torch.save(self.test.data, os.path.join(self.set_path, 'test.pt'))     
-
-    def load_splits(self):
-        self.train.data = torch.load(os.path.join(self.set_path, 'train.pt'))
-        self.val.data = torch.load(os.path.join(self.set_path, 'val.pt'))
-        self.test.data = torch.load(os.path.join(self.set_path, 'test.pt'))  
+        torch.save(self.task, os.path.join(self.set_path, 'train.pt'))
 
 
     """DATASET SPECIFIC"""
     def process_hp(self):
-        #TODO: change to use all data?
-        dataset = load_dataset('Fraser/news-category-dataset', split='train', cache_dir=self.config.cache_path) #train, test, validation
-
-        tasks = {i: [] for i in range(41)} 
+        data = {i: [] for i in range(41)}
+        dataset = load_dataset('Fraser/news-category-dataset', split='train', cache_dir=self.config.cache_path)
         for example in dataset:
-            if self.config.debug == True:
-                text = example["headline"]
-            else:
-                text = example["headline"] + ' ' + example["short_description"]
-            tasks[example['category_num']].append(text)
-        
-        #TODO: informed splits
-        self.train.data = {i: tasks[i] for i in range(0,29)}
-        self.val.data =  {i: tasks[i]  for i in range(29,35)}
-        self.test.data =  {i: tasks[i] for i in range(35,41)}
-        
-        self.save_splits()   
+            text = example['headline'] + ' ' + example['short_description']
+            data[example['category_num']].append(text)
+        self.save_data('hp', data)
     
 
     def process_ag(self):
-        #TODO: change to use all data?
-        dataset = load_dataset('ag_news', cache_dir=self.config.cache_path)
-        print(dataset)
-        
-        tasks = {i: [] for i in range(41)} 
+        data = {i: [] for i in range(4)} 
+        dataset = load_dataset('ag_news', split='train', cache_dir=self.config.cache_path) 
         for example in dataset:
-            if self.config.debug == True:
-                text = example["headline"]
-            else:
-                text = example["headline"] + ' ' + example["short_description"]
-            tasks[example['category_num']].append(text)
-        
-        #TODO: informed splits
-        self.train.data = {i: tasks[i] for i in range(0,2)}
-        self.val.data =  {2: tasks[2]}
-        self.test.data =  {3: tasks[3]}
-        
-        self.save_splits()   
+            text = example['text']
+            text = text.replace('\\', ' ')
+            data[example['label']].append(text)
+        self.save_data('ag', data) 
 
+
+    def process_yahoo(self):
+        data = {i: [] for i in range(10)} 
+        dataset = load_dataset('yahoo_answers_topics', split='train', cache_dir=self.config.cache_path) 
+        for example in dataset:
+            text = example['question_title'] + ' ' + example['question_content'] + ' ' + example['best_answer']
+            #text = text.replace('\n', '')
+            data[example['topic']].append(text)  
+        self.save_data('yahoo', data)  
+
+
+    def process_dbpedia(self):
+        data = {i: [] for i in range(14)} 
+        dataset = load_dataset('dbpedia_14', split='train', cache_dir=self.config.cache_path)
+        for example in dataset:
+            text = example['title'] + ' ' + example['content']
+            data[example['label']].append(text)
+        self.save_data('dbpedia', data)  
+
+
+    def process_bbc(self): 
+        data = {i: [] for i in range(5)} 
+        cats = {'business': 0, 'entertainment': 1, 'politics': 2, 'sport': 3, 'tech': 4}      
+        with open(os.path.join(self.set_path + '_raw', 'BBC News Train.csv')) as f:
+            reader = csv.reader(f, delimiter=',')
+            next(reader)
+            for row in reader:
+                text = row[1].replace('\n', ' ')
+                data[cats[row[2]]].append(text)
+        self.save_data('bbc', data)  
+
+    def process_ng(self): 
+        raise Exception("newsgroups not implemented")
