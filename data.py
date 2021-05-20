@@ -18,6 +18,8 @@ class Dataset():
             self.load_bcc(conf)
         elif conf.dataset == "ng":
             self.load_ng(conf)
+        elif conf.dataset == "db":
+            self.load_db(conf)
         else:
             pass
 
@@ -133,3 +135,21 @@ class Dataset():
         labels = torch.LongTensor([b[1] for b in data])
 
         return [{"txt" : h, "label" : l} for h, l in zip(text, labels)]
+
+    def load_db(self, conf):
+        """ Loads the dbpedia (db) """
+        dataset = load_dataset('dbpedia_14')
+        train, val = train_test_split(dataset["train"], test_size=0.1, random_state=42)
+        self.train = self.process_db(train, tokenizers[conf.tokenizer], conf.max_text_length)
+        self.val = self.process_db(val, tokenizers[conf.tokenizer], conf.max_text_length)
+        self.test = self.process_db(dataset["test"], tokenizers[conf.tokenizer], conf.max_text_length)
+        
+
+    def process_db(self, data, tokenizer, max_text_length=-1):
+        """ Extracts the headlines and labels from the DBPEDIA dataset.
+            The description is empty for some samples, which is why it is not returned."""  
+        txt = [title + ' ' + cont for title, cont in zip(data["title"], data["content"])]
+        maxlength = [ex[:max_text_length] for ex in txt]
+        txt = tokenizer(maxlength, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
+        labels = torch.LongTensor(data["label"])
+        return [{"txt" : h, "label" : l} for h, l in zip(txt, labels)]

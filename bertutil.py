@@ -18,7 +18,7 @@ def get_args():
     help_text_default = " (default: {})"
     parser.add_argument("name", type=str, 
                         help="name of the model")
-    parser.add_argument("dataset", type=str, choices=["hp", "ag", "bbc", "ng"],
+    parser.add_argument("dataset", type=str, choices=["hp", "ag", "bbc", "ng", "db"],
                         help="the dataset used for training")
     parser.add_argument("nr_classes", type=int,
                         help="the number of classes of the dataset")
