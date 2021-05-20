@@ -104,6 +104,57 @@ class LoadMultitaskData():
 
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
 
+    # See newsgroup.txt for info
+    def load_ng(self, conf):
+        twenty = False # placeholder for conf.twenty
+        text = []
+
+        if twenty:
+            categories = ['18828_alt.atheism', '18828_comp.graphics', '18828_comp.os.ms-windows.misc', '18828_comp.sys.ibm.pc.hardware',
+            '18828_comp.sys.mac.hardware', '18828_comp.windows.x', '18828_misc.forsale', '18828_rec.autos', '18828_rec.motorcycles',
+            '18828_rec.sport.baseball', '18828_rec.sport.hockey', '18828_sci.crypt', '18828_sci.electronics', '18828_sci.med', '18828_sci.space',
+            '18828_soc.religion.christian', '18828_talk.politics.guns', '18828_talk.politics.mideast', '18828_talk.politics.misc',
+            '18828_talk.religion.misc']
+
+            for i, category in enumerate(categories):
+                data = load_dataset("newsgroup", category)['train']['text']
+                text += [[" ".join(ex.split('\n', 2)[2].split()[:512]), i] for ex in data]
+
+
+        else:
+            politics = ['18828_talk.politics.guns', '18828_talk.politics.mideast', '18828_talk.politics.misc'] # Label 0
+            science = ['18828_sci.crypt', '18828_sci.electronics', '18828_sci.med', '18828_sci.space'] # 1
+            religion = ['18828_alt.atheism', '18828_soc.religion.christian', '18828_talk.religion.misc'] # 2
+            computer = ['18828_comp.graphics', '18828_comp.os.ms-windows.misc', '18828_comp.sys.ibm.pc.hardware',
+            '18828_comp.sys.mac.hardware', '18828_comp.windows.x'] # 3
+            sports = ['18828_rec.autos', '18828_rec.motorcycles', '18828_rec.sport.baseball', '18828_rec.sport.hockey'] # 4
+            sale = ['18828_misc.forsale'] # 5
+
+            for i, category in enumerate([politics, science, religion, computer, sports, sale]):
+                for subcat in category:
+                    data = load_dataset("newsgroup", subcat)['train']['text']
+                    text += [[" ".join(ex.split('\n', 2)[2].split()[:512]), i] for ex in data]
+
+
+        train_val, test = train_test_split(text, test_size=0.2, random_state=42)
+        train, val = train_test_split(train_val, test_size=0.1, random_state=42)
+        train = self.process_ng(train[:conf.sample], tokenizers[conf.tokenizer])
+        val = self.process_ng(val[:conf.sample], tokenizers[conf.tokenizer])
+        test = self.process_ng(test[:conf.sample], tokenizers[conf.tokenizer])
+
+        return train, val, test
+
+
+    def process_ng(self, data, tokenizer):
+        """ Extracts the headlines and labels from the 20 newsgroups dataset. """
+        text = [b[0] for b in data]
+        text = tokenizer(text, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
+
+        labels = [b[1] for b in data]
+        labels = torch.LongTensor(labels)
+
+        return [{"txt" : h, "label" : l} for h, l in zip(text, labels)]
+
 
     def load_datasets(self, conf):
         self.train = {}
