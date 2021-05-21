@@ -1,13 +1,18 @@
 import torch
+from torch.utils import data
 from transformers import BertTokenizer
 from datasets import load_dataset
 from sklearn.model_selection import train_test_split
+import re
+import os
+import json
+
 
 tokenizers = {
-    "BERT" : BertTokenizer.from_pretrained('bert-base-uncased')
+    "BERT" : BertTokenizer.from_pretrained('bert-base-uncased',  model_max_length=512)
 }
 
-class MultitaskDataset():
+class LoadMultitaskData():
     def __init__(self, conf):
         self.load_datasets(conf)
 
@@ -15,10 +20,11 @@ class MultitaskDataset():
         """ Loads the HuffPost (hp) dataset from [Hugging Face](https://huggingface.co/datasets/Fraser/news-category-dataset)
             Splits in train (160682), validation (10043) and test (30128). Every sample has the following features:
             `['authors', 'category', 'category_num', 'date', 'headline', 'link', 'short_description']` """
+
         dataset = load_dataset("Fraser/news-category-dataset")
-        train = self.process_hp(dataset["train"], tokenizers[conf.tokenizer], conf.max_text_length)
-        val = self.process_hp(dataset["validation"], tokenizers[conf.tokenizer], conf.max_text_length)
-        test = self.process_hp(dataset["test"], tokenizers[conf.tokenizer], conf.max_text_length)
+        train = self.process_hp(dataset["train"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
+        val = self.process_hp(dataset["validation"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
+        test = self.process_hp(dataset["test"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
         return train, val, test
 
 
@@ -27,7 +33,7 @@ class MultitaskDataset():
             The description is empty for some samples, which is why it is not returned."""
         txt = [head + ' ' + desc for head, desc in zip(data["headline"], data["short_description"])]
         maxlength = [ex[:max_text_length] for ex in txt]
-        txt = tokenizer(maxlength, padding=True, return_tensors='pt')["input_ids"]
+        txt = tokenizer(maxlength, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
         labels = torch.LongTensor(data["category_num"])
         return [{"txt" : h, "label" : l} for h, l in zip(txt, labels)]
 
@@ -35,10 +41,13 @@ class MultitaskDataset():
     def load_ag(self, conf):
         """ Loads the AG news dataset from [Hugging Face](https://huggingface.co/datasets/ag_news)
             Splits in train (120000) and test (7600). Every sample has the following features: `['label', 'text']` """
+
         dataset = load_dataset("ag_news")
-        train = self.process_ag(dataset["train"], tokenizers[conf.tokenizer], conf.max_text_length)
-        val = None
-        test = self.process_ag(dataset["test"], tokenizers[conf.tokenizer], conf.max_text_length)
+        sample = conf.sample * 5 if conf.sample is not None else None
+        train = self.process_ag(dataset["train"][:sample], tokenizers[conf.tokenizer], conf.max_text_length)
+        train, val = train_test_split(train, test_size=0.2, random_state=42)
+        train = train[:conf.sample]
+        test = self.process_ag(dataset["test"][:conf.sample], tokenizers[conf.tokenizer], conf.max_text_length)
         return train, val, test
 
 
@@ -47,7 +56,7 @@ class MultitaskDataset():
             The headlines contain '\\' characters in place of newlines. """
         maxlength = [ex[:max_text_length] for ex in data["text"]]
         noslash = [ex.replace("\\", " ") for ex in maxlength]
-        headlines = tokenizer(noslash, padding=True, return_tensors='pt')["input_ids"]
+        headlines = tokenizer(noslash, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
         labels = torch.LongTensor(data["label"])
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
 
@@ -58,17 +67,26 @@ class MultitaskDataset():
             Splits in train (1490) and test (735)."""
         l2i = {'entertainment':0, 'business':1, 'politics':2, 'sport':3, 'tech':4}
         # first row are colum names: ['ArticleId' 'Text' 'Category']
-        train = [line.replace("\n", "").split(",") for line in open('Data/BBC/Train/BBC News Train.csv')][1:]
-        train = [[ex[1], l2i[ex[2]]] for ex in train]
+        print('\nLoading BBC Dataset\n')
+        train_sample = (conf.sample * 5 + 1) if conf.sample is not None else None
+        with open('Data/BBC/Train/BBC News Train.csv') as train_file:
+            train = [line.replace("\n", "").split(",") for line in train_file][1:train_sample]
+            train = [[ex[1], l2i[ex[2]]] for ex in train]
 
         # first row are colum names: ['ArticleId' 'Text']
-        test_ex = [line.replace("\n", "").split(",") for line in open('Data/BBC/Test/BBC News Test.csv')][1:]
+        test_sample = conf.sample + 1 if conf.sample is not None else None
+        with open(r'Data/BBC/Test/BBC News Test.csv') as test_file:
+            test_ex = [line.replace("\n", "").split(",") for line in test_file][1:test_sample]
+
         # first row are colum names: ['ArticleId' 'Category']
-        test_labels = [line.replace("\n", "").split(",") for line in open('Data/BBC/Test/BBC News Sample Solution.csv')][1:]
+        with open(r'Data/BBC/Test/BBC News Sample Solution.csv') as test_labels_file:
+            test_labels = [line.replace("\n", "").split(",") for line in test_labels_file][1:test_sample]
+
         test = [[ex[1], l2i[label[1]]] for ex, label in zip(test_ex, test_labels) if ex[0] == label[0]]
 
         train = self.process_bbc(train, tokenizers[conf.tokenizer], conf.max_text_length)
-        val = None
+        train, val = train_test_split(train, test_size=0.2, random_state=42)
+        train = train[:conf.sample]
         test = self.process_bbc(test, tokenizers[conf.tokenizer], conf.max_text_length)
 
         assert len(test) == len(test_labels)
@@ -80,12 +98,11 @@ class MultitaskDataset():
     def process_bbc(self, data, tokenizer, max_text_length=-1):
         """ Extracts the headlines and labels from the BBC news dataset. """
         maxlength = [b[0][:max_text_length] for b in data]
-        headlines = tokenizer(maxlength, padding=True, return_tensors='pt')["input_ids"]
+        headlines = tokenizer(maxlength, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
 
         labels = torch.LongTensor([b[1] for b in data])
 
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
-
 
     # See newsgroup.txt for info
     def load_ng(self, conf):
@@ -100,8 +117,8 @@ class MultitaskDataset():
             '18828_talk.religion.misc']
 
             for i, category in enumerate(categories):
-                data = load_dataset("newsgroup", subcat)['train']['text']
-                text.append([[ex.split('\n', 2)[2], i] for ex in data])
+                data = load_dataset("newsgroup", category)['train']['text']
+                text += [[" ".join(ex.split('\n', 2)[2].split()[:512]), i] for ex in data]
 
 
         else:
@@ -116,22 +133,25 @@ class MultitaskDataset():
             for i, category in enumerate([politics, science, religion, computer, sports, sale]):
                 for subcat in category:
                     data = load_dataset("newsgroup", subcat)['train']['text']
-                    text.append([[ex.split('\n', 2)[2], i] for ex in data])
+                    text += [[" ".join(ex.split('\n', 2)[2].split()[:512]), i] for ex in data]
 
-        
+
         train_val, test = train_test_split(text, test_size=0.2, random_state=42)
         train, val = train_test_split(train_val, test_size=0.1, random_state=42)
-        train = self.process_ng(train, tokenizers[conf.tokenizer])
-        val = self.process_ng(val, tokenizers[conf.tokenizer])
-        test = self.process_ng(test, tokenizers[conf.tokenizer])
+        train = self.process_ng(train[:conf.sample], tokenizers[conf.tokenizer])
+        val = self.process_ng(val[:conf.sample], tokenizers[conf.tokenizer])
+        test = self.process_ng(test[:conf.sample], tokenizers[conf.tokenizer])
+
         return train, val, test
 
 
     def process_ng(self, data, tokenizer):
         """ Extracts the headlines and labels from the 20 newsgroups dataset. """
+        text = [b[0] for b in data]
+        text = tokenizer(text, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
 
-        text = tokenizer([b[0] for b in data], padding=True, return_tensors='pt')["input_ids"]
-        labels = torch.LongTensor([b[1] for b in data])
+        labels = [b[1] for b in data]
+        labels = torch.LongTensor(labels)
 
         return [{"txt" : h, "label" : l} for h, l in zip(text, labels)]
 
@@ -143,7 +163,7 @@ class MultitaskDataset():
 
         train_hp, val_hp, test_hp = self.load_hp(conf)
         train_ag, val_ag, test_ag = self.load_ag(conf)
-        train_bbc, val_bbc, test_bbc = self.load_bcc(conf)
+        train_bbc, val_bbc, test_bbc = self.load_bbc(conf)
         # train_ng, val_ng, test_ng = self.load_ng(conf)
 
         self.train['hp'] = train_hp
@@ -161,10 +181,94 @@ class MultitaskDataset():
         self.test['bbc'] = test_bbc
         # self.test['ng'] = test_ng
 
-    @staticmethod
-    def batch_data(data, bs=2):
-        ''' Returns the data in a list of batches of size bs'''
-        return [[data[0][i:i+bs], data[1][i:i+bs]] for i in range(0, len(data), bs)]
+
+class MergeMultitaskData(data.Dataset):
+    def __init__(self, dataset_dict):
+        super().__init__()
+        self.datasets = dataset_dict
+        self.len_hp = len(self.datasets['hp'])
+        self.len_ag = len(self.datasets['ag'])
+        self.len_bbc = len(self.datasets['bbc'])
+        # self.len_ng = len(self.datasets['ng'])
+
+    def __len__(self):
+        return self.len_hp + self.len_ag + self.len_bbc
+
+    def __getitem__(self, idx):
+        batch = {}
+        batch['hp'] = self.datasets['hp'][idx%self.len_hp]
+        batch['ag'] = self.datasets['ag'][idx%self.len_ag]
+        batch['bbc'] = self.datasets['bbc'][idx%self.len_bbc]
+        # batch['ng'] = self.datasets['ng'][idx%self.len_ng]
+        return batch
+
+class FewShotEvaluationSet():
+    def __init__(self, config, dataset):
+        self.config = config
+        self.dataset = dataset
+        self.set_path = os.path.join(self.config.data_path, dataset)
+
+        self.train = self.Split(config)
+        self.val = self.Split(config)
+        self.test = self.Split(config)
+
+        if dataset == "hp":
+            self.load_data(self.process_hp)
+        if dataset == "bbc":
+            self.load_data(self.process_bbc)
+        if dataset == "ag":
+            self.load_data(self.process_ag)
+        if dataset == "yahoo":
+            self.load_data(self.process_yahoo)
+        if dataset == "dbpedia":
+            self.load_data(self.process_dbpedia)
+        if dataset == "ng":
+            self.load_data(self.process_ng)
+
+    class Split(Dataset):
+        def __init__(self, config):
+            self.config = config
+            self.data = {} # dict of class_id: [sentences]
+
+        def test_batch(self, batch_size):
+            return [self.testing_episode() for i in range(batch_size)]
+
+        def testing_episode(self):
+            class_ids = random.sample(self.data.keys(), self.config.way) # sample classes, n = way
+            query, support = [], []
+
+            smallest_set = min([len(self.data[class_id]) for class_id in class_ids])
+            eval_size = min(smallest_set, self.config.max_eval_size)
+
+            for class_id in class_ids: # for all classes
+                sample_ids = random.sample(range(len(self.data[class_id])), eval_size + self.config.shot)
+
+                support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[0:self.config.shot]])
+                query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[self.config.shot:]])
+
+            return support, query, eval_size
+
+
+    # Download, process, save, remove raw dataset
+    def load_data(self, process_fn):
+        if os.path.exists(self.set_path):
+            self.load_splits()
+        else:
+            #os.mkdir(self.config.cache_path)
+            process_fn()
+            #shutil.rmtree(self.config.cache_path) # remove cache
+
+
+    def save_splits(self):
+        os.mkdir(self.set_path)
+        torch.save(self.train.data, os.path.join(self.set_path, 'train.pt'))
+        torch.save(self.val.data, os.path.join(self.set_path, 'val.pt'))
+        torch.save(self.test.data, os.path.join(self.set_path, 'test.pt'))
+
+    def load_splits(self):
+        self.train.data = torch.load(os.path.join(self.set_path, 'train.pt'))
+        self.val.data = torch.load(os.path.join(self.set_path, 'val.pt'))
+        self.test.data = torch.load(os.path.join(self.set_path, 'test.pt'))
 
 # class Args():
 #     def __init__(self):
@@ -178,10 +282,16 @@ class MultitaskDataset():
 #         self.device = "gpu"
 #         self.seed = 20
 #         self.max_text_length = -1
+#         self.sample = 256
 #
 # if __name__ == "__main__":
 #     conf = Args()
-#     multitask_data = MultitaskDataset(conf)
-#     print("datapoint hp:", multitask_data.train['hp'][0])
-#     print("datapoint ag:", multitask_data.train['ag'][0])
-#     print("datapoint bbc:", multitask_data.train['bbc'][0])
+#     multitask_data = LoadMultitaskData(conf)
+#     train_data = MergeMultitaskData(multitask_data.train)
+#     loader = data.DataLoader(train_data, batch_size = conf.batch_size)
+#
+#
+#     print("datapoint hp:", multitask_data.train['hp'][0], '\n')
+#     print("datapoint ag:", multitask_data.train['ag'][0], '\n')
+#     print("datapoint bbc:", multitask_data.train['bbc'][0], '\n')
+#     print("datapoint ng:", multitask_data.train['ng'][0], '\n')
