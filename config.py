@@ -15,7 +15,8 @@ arg_defaults = {
     "max_text_length": -1,
     "sample" : None,
     'progress_bar' : True,
-    "num_workers" : 4
+    "num_workers" : 4,
+    "gpus": 1
 }
 
 def get_args():
@@ -50,7 +51,9 @@ def get_args():
     parser.add_argument("--sample", type=int, default=arg_defaults["sample"],
                         help="Amount of datapoints used in each split in a dataset. Recommended for testing." + help_text_default.format(arg_defaults["sample"]))
     parser.add_argument("--num_workers", type=int, default=arg_defaults['num_workers'],
-                        help="The number of workers/processes on the cpu" + help_text_default.format(arg_defaults["max_text_length"]))
+                        help="The number of workers/processes on the cpu" + help_text_default.format(arg_defaults["num_workers"]))
+    parser.add_argument("--gpus", type=int, default=arg_defaults['gpus'],
+                        help="The number of GPU's used" + help_text_default.format(arg_defaults["gpus"]))
 
     args = parser.parse_args()
     return args

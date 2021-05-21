@@ -1,3 +1,4 @@
+from pytorch_lightning.accelerators import accelerator
 import torch
 import os
 
@@ -19,7 +20,7 @@ def train_multitask(loader, conf):
                          callbacks=ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc"),
                          gpus=1 if "gpu" in str(conf.device) else 0,
                          max_epochs=conf.max_epochs,
-                         progress_bar_refresh_rate=1 if conf.progress_bar else 0)
+                         progress_bar_refresh_rate=1 if conf.progress_bar else 0, accelerator='ddp')
 
     # Not really clear what these do, but are often disabled.
     trainer.logger._log_graph = False
