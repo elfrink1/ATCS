@@ -16,7 +16,9 @@ arg_defaults = {
     "sample" : None,
     'progress_bar' : True,
     "num_workers" : 4,
-    "gpus": 1
+    "gpus": 1,
+    "train_sets" : ['hp', 'ag', 'dbpedia'],
+    "test_set" : ['bbc']
 }
 
 def get_args():

@@ -12,6 +12,7 @@ class MultitaskBert(nn.Module):
         super(MultitaskBert, self).__init__()
         self.bert = BertModel.from_pretrained("bert-base-uncased")
         self.nr_layers = 11
+        self.num_classes = {'hp': 41, 'ag' : 4, 'bbc': 5, 'ng' : 6, 'dbpedia' : 14}
         self.finetuned_layers = [str(self.nr_layers - diff) for diff in range(conf.finetuned_layers)] if conf.finetuned_layers > 0 else []
         self.finetuned_layers.append("pooler")
 
@@ -32,15 +33,19 @@ class MultitaskBert(nn.Module):
 
         self.shared_encoders = encoder.layer[:tl]
 
-        self.ag = self.get_task_layers(encoder.layer[tl:], pooler, 4)
-
-        self.hp = self.get_task_layers(encoder.layer[tl:], pooler, 41)
-
-        self.bbc = self.get_task_layers(encoder.layer[tl:], pooler, 5)
+        self.task_layers = {}
+        for dataset in conf.train_sets:
+            self.task_layers[dataset] = get_task_layers(encoder.layer[tl:], pooler, self.num_classes[dataset])
 
         self.few_shot_head = self.get_task_layers(encoder.layer[tl:], pooler, conf.hidden)
 
-        self.task_layers = {'hp': self.hp, 'ag':self.ag, 'bbc':self.bbc}
+        # self.ag = self.get_task_layers(encoder.layer[tl:], pooler, 4)
+        #
+        # self.hp = self.get_task_layers(encoder.layer[tl:], pooler, 41)
+        #
+        # self.bbc = self.get_task_layers(encoder.layer[tl:], pooler, 5)
+        #
+        # self.task_layers = {'hp': self.hp, 'ag':self.ag, 'bbc':self.bbc}
 
 
     def get_task_layers(self, encoder_layers, pooling_layer, num_classes):

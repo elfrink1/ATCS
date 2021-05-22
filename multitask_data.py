@@ -104,6 +104,7 @@ class LoadMultitaskData():
 
         return [{"txt" : h, "label" : l} for h, l in zip(headlines, labels)]
 
+
     # See newsgroup.txt for info
     def load_ng(self, conf):
         twenty = False # placeholder for conf.twenty
@@ -156,142 +157,121 @@ class LoadMultitaskData():
         return [{"txt" : h, "label" : l} for h, l in zip(text, labels)]
 
 
+    def load_dbpedia(self, conf):
+        dataset = load_dataset('dbpedia_14')
+        train, val = train_test_split(dataset['train'], test_size=0.1, random_state=42)
+        test = dataset['test']
+        sample = conf.sample
+        train = self.process_dbpedia(train, tokenizers[conf.tokenizer], sample)
+        val = self.process_dbpedia(val, tokenizers[conf.tokenizer], sample)
+        test = self.process_dbpedia(test, tokenizers[conf.tokenizer], sample)
+
+        return train, val, test
+
+
+    def process_dbpedia(self, data, tokenizer, sample=None, max_text_length=-1):
+        text = [title + ' ' + content for (title, content) in zip(data['title'][:sample], data['content'][:sample])]
+        text = tokenizer(text, padding=True, return_tensors='pt', truncation=True, max_length=512)['input_ids']
+
+        labels = [label for label in data['label'][:sample]]
+        labels = torch.LongTensor(labels)
+
+        return [{"txt" : h, "label" : l} for h, l in zip(text, labels)]
+
+
     def load_datasets(self, conf):
         self.train = {}
         self.val = {}
         self.test = {}
 
-        train_hp, val_hp, test_hp = self.load_hp(conf)
-        train_ag, val_ag, test_ag = self.load_ag(conf)
-        train_bbc, val_bbc, test_bbc = self.load_bbc(conf)
+        for dataset in conf.train_sets:
+            if dataset == "hp":
+                train, val, test = self.load_hp(conf)
+            elif dataset == "bbc":
+                train, val, test = self.load_bbc(conf)
+            elif dataset == "ag":
+                train, val, test = self.load_ag(conf)
+            elif dataset == "dbpedia":
+                train, val, test = self.load_dbpedia(conf)
+            elif dataset == "ng":
+                train, val, test = self.load_ng(conf)
+
+            self.train[dataset] = train
+            self.val[dataset] = val
+            self.test[dataset] = test
+
+        # train_hp, val_hp, test_hp = self.load_hp(conf)
+        # train_ag, val_ag, test_ag = self.load_ag(conf)
+        # train_bbc, val_bbc, test_bbc = self.load_bbc(conf)
         # train_ng, val_ng, test_ng = self.load_ng(conf)
-
-        self.train['hp'] = train_hp
-        self.train['ag'] = train_ag
-        self.train['bbc'] = train_bbc
+        # train_dbp, val_dbp, test_dbp = self.load_dbpedia(conf)
+        #
+        # self.train['hp'] = train_hp
+        # self.train['ag'] = train_ag
+        # self.train['bbc'] = train_bbc
         # self.train['ng'] = train_ng
-
-        self.val['hp'] = val_hp
-        self.val['ag'] = val_ag
-        self.val['bbc'] = val_bbc
+        # self.train['dbp'] = train_dbp
+        #
+        # self.val['hp'] = val_hp
+        # self.val['ag'] = val_ag
+        # self.val['bbc'] = val_bbc
         # self.val['ng'] = val_ng
-
-        self.test['hp'] = test_hp
-        self.test['ag'] = test_ag
-        self.test['bbc'] = test_bbc
+        # self.val['dbp'] = val_dbp
+        #
+        # self.test['hp'] = test_hp
+        # self.test['ag'] = test_ag
+        # self.test['bbc'] = test_bbc
         # self.test['ng'] = test_ng
+        # self.test['dbp'] = test_dbp
 
 
 class MergeMultitaskData(data.Dataset):
     def __init__(self, dataset_dict):
         super().__init__()
         self.datasets = dataset_dict
-        self.len_hp = len(self.datasets['hp'])
-        self.len_ag = len(self.datasets['ag'])
-        self.len_bbc = len(self.datasets['bbc'])
+        self.lengths = {}
+        for dataset in conf.train_sets:
+            self.lengths[dataset] = len(self.datasets[dataset])
+        # self.len_hp = len(self.datasets['hp'])
+        # self.len_ag = len(self.datasets['ag'])
+        # self.len_bbc = len(self.datasets['bbc'])
         # self.len_ng = len(self.datasets['ng'])
 
     def __len__(self):
-        return self.len_hp + self.len_ag + self.len_bbc
+        return sum([self.lengths[dataset] for dataset in self.datasets])
+        # return self.len_hp + self.len_ag + self.len_bbc
 
     def __getitem__(self, idx):
         batch = {}
-        batch['hp'] = self.datasets['hp'][idx%self.len_hp]
-        batch['ag'] = self.datasets['ag'][idx%self.len_ag]
-        batch['bbc'] = self.datasets['bbc'][idx%self.len_bbc]
+        for dataset in conf.train_sets:
+            batch[dataset] = self.datasets[dataset][idx%self.lengths[dataset]]
+
+        # batch['hp'] = self.datasets['hp'][idx%self.len_hp]
+        # batch['ag'] = self.datasets['ag'][idx%self.len_ag]
+        # batch['bbc'] = self.datasets['bbc'][idx%self.len_bbc]
         # batch['ng'] = self.datasets['ng'][idx%self.len_ng]
         return batch
 
-class FewShotEvaluationSet():
-    def __init__(self, config, dataset):
-        self.config = config
-        self.dataset = dataset
-        self.set_path = os.path.join(self.config.data_path, dataset)
 
-        self.train = self.Split(config)
-        self.val = self.Split(config)
-        self.test = self.Split(config)
+class Args():
+    def __init__(self):
+        self.path = "models/bert"
+        self.optimizer = "Adam"
+        self.lr = 0.001
+        self.max_epochs = 100
+        self.finetuned_layers = 0
+        self.tokenizer = "BERT"
+        self.batch_size = 64
+        self.device = "gpu"
+        self.seed = 20
+        self.max_text_length = -1
+        self.sample = 100
+        self.train_sets = ['hp', 'ag', 'dbpedia']
 
-        if dataset == "hp":
-            self.load_data(self.process_hp)
-        if dataset == "bbc":
-            self.load_data(self.process_bbc)
-        if dataset == "ag":
-            self.load_data(self.process_ag)
-        if dataset == "yahoo":
-            self.load_data(self.process_yahoo)
-        if dataset == "dbpedia":
-            self.load_data(self.process_dbpedia)
-        if dataset == "ng":
-            self.load_data(self.process_ng)
-
-    class Split(Dataset):
-        def __init__(self, config):
-            self.config = config
-            self.data = {} # dict of class_id: [sentences]
-
-        def test_batch(self, batch_size):
-            return [self.testing_episode() for i in range(batch_size)]
-
-        def testing_episode(self):
-            class_ids = random.sample(self.data.keys(), self.config.way) # sample classes, n = way
-            query, support = [], []
-
-            smallest_set = min([len(self.data[class_id]) for class_id in class_ids])
-            eval_size = min(smallest_set, self.config.max_eval_size)
-
-            for class_id in class_ids: # for all classes
-                sample_ids = random.sample(range(len(self.data[class_id])), eval_size + self.config.shot)
-
-                support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[0:self.config.shot]])
-                query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[self.config.shot:]])
-
-            return support, query, eval_size
-
-
-    # Download, process, save, remove raw dataset
-    def load_data(self, process_fn):
-        if os.path.exists(self.set_path):
-            self.load_splits()
-        else:
-            #os.mkdir(self.config.cache_path)
-            process_fn()
-            #shutil.rmtree(self.config.cache_path) # remove cache
-
-
-    def save_splits(self):
-        os.mkdir(self.set_path)
-        torch.save(self.train.data, os.path.join(self.set_path, 'train.pt'))
-        torch.save(self.val.data, os.path.join(self.set_path, 'val.pt'))
-        torch.save(self.test.data, os.path.join(self.set_path, 'test.pt'))
-
-    def load_splits(self):
-        self.train.data = torch.load(os.path.join(self.set_path, 'train.pt'))
-        self.val.data = torch.load(os.path.join(self.set_path, 'val.pt'))
-        self.test.data = torch.load(os.path.join(self.set_path, 'test.pt'))
-
-# class Args():
-#     def __init__(self):
-#         self.path = "models/bert"
-#         self.optimizer = "Adam"
-#         self.lr = 0.001
-#         self.max_epochs = 100
-#         self.finetuned_layers = 0
-#         self.tokenizer = "BERT"
-#         self.batch_size = 64
-#         self.device = "gpu"
-#         self.seed = 20
-#         self.max_text_length = -1
-#         self.sample = 256
-#
-# if __name__ == "__main__":
-#     conf = Args()
-#     multitask_data = LoadMultitaskData(conf)
-#     train_data = MergeMultitaskData(multitask_data.train)
-#     loader = data.DataLoader(train_data, batch_size = conf.batch_size)
-#
-#
-#     print("datapoint hp:", multitask_data.train['hp'][0], '\n')
-#     print("datapoint ag:", multitask_data.train['ag'][0], '\n')
-#     print("datapoint bbc:", multitask_data.train['bbc'][0], '\n')
-#     print("datapoint ng:", multitask_data.train['ng'][0], '\n')
+if __name__ == "__main__":
+    conf = Args()
+    multitask_data = LoadMultitaskData(conf)
+    train_data = MergeMultitaskData(multitask_data.train)
+    loader = data.DataLoader(train_data, batch_size = conf.batch_size)
+    batch = next(iter(loader))
+    print(batch)
