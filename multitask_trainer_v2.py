@@ -15,7 +15,8 @@ class MultitaskTrainer(nn.Module):
         self.model = MultitaskBert(conf)
         self.loss_module = nn.CrossEntropyLoss()
 
-    def train_model(self, data):
+
+    def train_model(self, train_data):
         self.model.train()
         if self.config.optimizer == "Adam":
             optimizer = optim.Adam(self.model.parameters(), lr=self.config.lr)
@@ -25,23 +26,34 @@ class MultitaskTrainer(nn.Module):
 
 
         for epoch in self.config.max_epochs:
-            for batch in data:
+            for batch in train_data:
                 out_ = self.model(batch)
-                loss_hp = self.loss_module(out_[0], batch['hp']["label"])
-                loss_ag = self.loss_module(out_[1], batch['ag']["label"])
-                # loss_bbc = self.loss_module(out_[2], batch['bbc']["label"])
-                loss_ng = self.loss_module(out_[2], batch['ng']["label"])
-                avg_loss = (loss_hp + loss_ag + loss_bbc + loss_ng) / 3
+                losses, accs = []
+                for i, dataset in enumerate(self.config.train_sets):
+                    loss = self.loss_module(out_[i], batch[dataset]["label"])
+                    acc = (out_[i].argmax(dim=-1) == batch[dataset]["label"]).float().mean()
+                    accs.append(acc.item())
+                    losses.append(loss.item())
+                train_loss = torch.mean(torch.Tensor(losses))
+                train_acc = torch.mean(torch.Tensor(accs))
 
-                acc_hp = (out_[0].argmax(dim=-1) == batch['hp']["label"]).float().mean()
-                acc_ag = (out_[1].argmax(dim=-1) == batch['ag']["label"]).float().mean()
+                # loss_hp = self.loss_module(out_[0], batch['hp']["label"])
+                # loss_ag = self.loss_module(out_[1], batch['ag']["label"])
+                # loss_bbc = self.loss_module(out_[2], batch['bbc']["label"])
+                # loss_ng = self.loss_module(out_[2], batch['ng']["label"])
+                # avg_loss = (loss_hp + loss_ag + loss_bbc + loss_ng) / 3
+                #
+                # acc_hp = (out_[0].argmax(dim=-1) == batch['hp']["label"]).float().mean()
+                # acc_ag = (out_[1].argmax(dim=-1) == batch['ag']["label"]).float().mean()
                 # acc_bbc = (out_[2].argmax(dim=-1) == batch['bbc']["label"]).float().mean()
-                acc_ng = (out_[2].argmax(dim=-1) == batch['ng']["label"]).float().mean()
-                avg_train_acc = (acc_hp + acc_ag + acc_bbc + acc_ng) / 3
+                # acc_ng = (out_[2].argmax(dim=-1) == batch['ng']["label"]).float().mean()
+                # avg_train_acc = (acc_hp + acc_ag + acc_bbc + acc_ng) / 3
 
                 optimizer.zero_grad()
-                loss.backward()
+                train_loss.backward()
                 optimizer.step()
+            scheduler.step()
+        return train_loss, train_acc
 
 
     def eval_model(self, batch):
@@ -53,7 +65,8 @@ class MultitaskTrainer(nn.Module):
             episode_model, weight, bias = self.proto_task(episode.support)
             with torch.no_grad():
                 for (text, labels) in episode.query.get_batch(self.config, batch_size=self.config.query_batch):
-                    out = episode_model(text)
+                    out = episode_model.bert(text['input_ids'], text['attention_mask']).pooler_output
+                    out = episode_model.few_shot_head(out)
                     out = self.output_layer(out, weight, bias)
                     loss = self.loss_module(out, labels)
                     losses.append(loss.item())
@@ -65,7 +78,7 @@ class MultitaskTrainer(nn.Module):
 
 
     def proto_task(self, support):
-        episode_model = copy.deepcopy(self.model) #STEP 2
+        episode_model = copy.deepcopy(model) #STEP 2
         episode_model.zero_grad()
         inner_opt = torch.optim.SGD([p for p in episode_model.parameters() if p.requires_grad], lr=self.config.inner_lr)
 
@@ -80,7 +93,8 @@ class MultitaskTrainer(nn.Module):
             inner_opt.zero_grad()
             text, labels = next(support.get_batch(self.config))
 
-            out = episode_model(text)
+            out = episode_model.bert(text['input_ids'], text['attention_mask']).pooler_output
+            out = episode_model.few_shot_head(out)
             out = self.output_layer(out, weight, bias)
             loss = self.loss_module(out, labels)
 
@@ -106,7 +120,8 @@ class MultitaskTrainer(nn.Module):
         n_classes = support.n_classes
 
         text, _ = next(support.get_batch(self.config))
-        emb = self.model(text)
+        emb = self.model.bert(batch['input_ids'], batch['attention_mask']).pooler_output
+        emb = self.model.few_shot_head(emb)
         c_k = torch.stack([torch.mean(emb[i:i + self.config.shot, :], dim=0) for i in range(0, self.config.shot * n_classes, self.config.shot)])
 
         W = 2 * c_k

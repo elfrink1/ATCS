@@ -1,5 +1,4 @@
-# This file implements the multitask framework with a pre-trained BERT model
-# Hard sharing will be used as the multitask framework
+
 import torch
 import torch.nn as nn
 from torch.utils import data
@@ -11,6 +10,7 @@ class MultitaskBert(nn.Module):
     def __init__(self, conf):
         super(MultitaskBert, self).__init__()
         self.bert = BertModel.from_pretrained("bert-base-uncased")
+        self.config = conf
         self.nr_layers = 11
         self.num_classes = {'hp': 41, 'ag' : 4, 'bbc': 5, 'ng' : 6, 'dbpedia' : 14}
         self.finetuned_layers = [str(self.nr_layers - diff) for diff in range(conf.finetuned_layers)] if conf.finetuned_layers > 0 else []
@@ -28,16 +28,15 @@ class MultitaskBert(nn.Module):
         embedding, encoder, pooler = [*self.bert.children()]
         tl = -conf.task_layers
         self.embedding = embedding
-        self.bert_layer = encoder.layer[0]
         self.pooler = pooler
 
         self.shared_encoders = encoder.layer[:tl]
 
         self.task_layers = {}
         for dataset in conf.train_sets:
-            self.task_layers[dataset] = get_task_layers(encoder.layer[tl:], pooler, self.num_classes[dataset])
+            self.task_layers[dataset] = self.get_task_layers(encoder.layer[tl:], pooler, self.num_classes[dataset])
 
-        self.few_shot_head = self.get_task_layers(encoder.layer[tl:], pooler, conf.hidden)
+        self.few_shot_head = nn.Sequential(nn.Linear(786, conf.hidden), nn.ReLU())
 
         # self.ag = self.get_task_layers(encoder.layer[tl:], pooler, 4)
         #
@@ -56,6 +55,8 @@ class MultitaskBert(nn.Module):
         return task_layers
 
 
+    # Applies the head created from the function 'get_task_layers'
+    # These are either the task specific layers or the few shot evaluation head
     def apply_task_layers(self, x, task_layers):
         encoders = task_layers[:-2]
         for encoder in encoders:
@@ -65,38 +66,48 @@ class MultitaskBert(nn.Module):
         return x
 
 
+    def apply_shared_encoders(self, x):
+        for encoder in self.shared_encoders:
+            x = encoder(x)[0]
+        return x
+
+
     def forward(self, batch):
-        datasets = list(self.task_layers.keys())
+        datasets = self.config.train_sets
         outputs = []
         for dataset in datasets:
             out = self.embedding(batch[dataset]['txt'])
-            for encoder in self.shared_encoders:
-                out = encoder(out)[0]
-
+            out = self.apply_shared_encoders(out)
             out = self.apply_task_layers(out, self.task_layers[dataset])
             outputs.append(out)
         return outputs
 
 
-# class Args():
-#     def __init__(self):
-#         self.path = "models/bert"
-#         self.optimizer = "Adam"
-#         self.lr = 0.001
-#         self.max_epochs = 100
-#         self.finetuned_layers = 0
-#         self.task_layers = 1
-#         self.tokenizer = "BERT"
-#         self.batch_size = 64
-#         self.device = "gpu"
-#         self.seed = 20
-#         self.max_text_length = -1
-#
-# if __name__ == "__main__":
-#     conf = Args()
-#     multitask_data = LoadMultitaskData(conf)
-#     train_data = MergeMultitaskData(multitask_data.train)
-#     loader = data.DataLoader(train_data, batch_size = conf.batch_size)
-#     batch = next(iter(loader))
-#     model = MultitaskBert(conf)
-#     output = model(batch)
+class Args():
+    def __init__(self):
+        self.path = "models/bert"
+        self.optimizer = "Adam"
+        self.lr = 0.001
+        self.max_epochs = 100
+        self.finetuned_layers = 0
+        self.task_layers = 1
+        self.tokenizer = "BERT"
+        self.batch_size = 25
+        self.device = "gpu"
+        self.seed = 20
+        self.max_text_length = -1
+        self.sample = 100
+        self.train_sets = ['hp', 'ag', 'dbpedia']
+        self.hidden = 192
+
+if __name__ == "__main__":
+    conf = Args()
+    multitask_data = LoadMultitaskData(conf)
+    train_data = MergeMultitaskData(multitask_data.train)
+    loader = data.DataLoader(train_data, batch_size=conf.batch_size)
+    batch = next(iter(loader))
+    model = MultitaskBert(conf)
+    output = model(batch)
+    print(output[0].shape)
+    print(output[1].shape)
+    print(output[2].shape)

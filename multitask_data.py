@@ -229,8 +229,9 @@ class MergeMultitaskData(data.Dataset):
     def __init__(self, dataset_dict):
         super().__init__()
         self.datasets = dataset_dict
+        self.dataset_names = list(dataset_dict.keys())
         self.lengths = {}
-        for dataset in conf.train_sets:
+        for dataset in self.dataset_names:
             self.lengths[dataset] = len(self.datasets[dataset])
         # self.len_hp = len(self.datasets['hp'])
         # self.len_ag = len(self.datasets['ag'])
@@ -243,7 +244,7 @@ class MergeMultitaskData(data.Dataset):
 
     def __getitem__(self, idx):
         batch = {}
-        for dataset in conf.train_sets:
+        for dataset in self.dataset_names:
             batch[dataset] = self.datasets[dataset][idx%self.lengths[dataset]]
 
         # batch['hp'] = self.datasets['hp'][idx%self.len_hp]
