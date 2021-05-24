@@ -184,7 +184,9 @@ class LoadMultitaskData():
         self.val = {}
         self.test = {}
 
-        for dataset in conf.train_sets:
+        datasets = conf.train_sets.split(',')
+
+        for dataset in datasets:
             if dataset == "hp":
                 train, val, test = self.load_hp(conf)
             elif dataset == "bbc":
@@ -200,31 +202,6 @@ class LoadMultitaskData():
             self.val[dataset] = val
             self.test[dataset] = test
 
-        # train_hp, val_hp, test_hp = self.load_hp(conf)
-        # train_ag, val_ag, test_ag = self.load_ag(conf)
-        # train_bbc, val_bbc, test_bbc = self.load_bbc(conf)
-        # train_ng, val_ng, test_ng = self.load_ng(conf)
-        # train_dbp, val_dbp, test_dbp = self.load_dbpedia(conf)
-        #
-        # self.train['hp'] = train_hp
-        # self.train['ag'] = train_ag
-        # self.train['bbc'] = train_bbc
-        # self.train['ng'] = train_ng
-        # self.train['dbp'] = train_dbp
-        #
-        # self.val['hp'] = val_hp
-        # self.val['ag'] = val_ag
-        # self.val['bbc'] = val_bbc
-        # self.val['ng'] = val_ng
-        # self.val['dbp'] = val_dbp
-        #
-        # self.test['hp'] = test_hp
-        # self.test['ag'] = test_ag
-        # self.test['bbc'] = test_bbc
-        # self.test['ng'] = test_ng
-        # self.test['dbp'] = test_dbp
-
-
 class MergeMultitaskData(data.Dataset):
     def __init__(self, dataset_dict):
         super().__init__()
@@ -233,24 +210,15 @@ class MergeMultitaskData(data.Dataset):
         self.lengths = {}
         for dataset in self.dataset_names:
             self.lengths[dataset] = len(self.datasets[dataset])
-        # self.len_hp = len(self.datasets['hp'])
-        # self.len_ag = len(self.datasets['ag'])
-        # self.len_bbc = len(self.datasets['bbc'])
-        # self.len_ng = len(self.datasets['ng'])
 
     def __len__(self):
         return sum([self.lengths[dataset] for dataset in self.datasets])
-        # return self.len_hp + self.len_ag + self.len_bbc
 
     def __getitem__(self, idx):
         batch = {}
         for dataset in self.dataset_names:
             batch[dataset] = self.datasets[dataset][idx%self.lengths[dataset]]
 
-        # batch['hp'] = self.datasets['hp'][idx%self.len_hp]
-        # batch['ag'] = self.datasets['ag'][idx%self.len_ag]
-        # batch['bbc'] = self.datasets['bbc'][idx%self.len_bbc]
-        # batch['ng'] = self.datasets['ng'][idx%self.len_ng]
         return batch
 
 
@@ -267,7 +235,7 @@ class Args():
         self.seed = 20
         self.max_text_length = -1
         self.sample = 100
-        self.train_sets = ['hp', 'ag', 'dbpedia']
+        self.train_sets = "hp,ag,dbpedia"
 
 if __name__ == "__main__":
     conf = Args()

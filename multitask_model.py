@@ -10,7 +10,8 @@ class MultitaskBert(nn.Module):
     def __init__(self, conf):
         super(MultitaskBert, self).__init__()
         self.bert = BertModel.from_pretrained("bert-base-uncased")
-        self.config = conf
+        self.datasets = datasets = conf.train_sets.split(',')
+        self.loss_weights = {}
         self.nr_layers = 11
         self.num_classes = {'hp': 41, 'ag' : 4, 'bbc': 5, 'ng' : 6, 'dbpedia' : 14}
         self.finetuned_layers = [str(self.nr_layers - diff) for diff in range(conf.finetuned_layers)] if conf.finetuned_layers > 0 else []
@@ -33,18 +34,13 @@ class MultitaskBert(nn.Module):
         self.shared_encoders = encoder.layer[:tl]
 
         self.task_layers = {}
-        for dataset in conf.train_sets:
+        for dataset in self.datasets:
             self.task_layers[dataset] = self.get_task_layers(encoder.layer[tl:], pooler, self.num_classes[dataset])
+            loss_weight = nn.Parameter(torch.ones(1))
+            self.register_parameter(name='loss_weight_' + dataset, param=loss_weight)
+            self.loss_weights[dataset] = loss_weight
 
-        self.few_shot_head = nn.Sequential(nn.Linear(786, conf.hidden), nn.ReLU())
-
-        # self.ag = self.get_task_layers(encoder.layer[tl:], pooler, 4)
-        #
-        # self.hp = self.get_task_layers(encoder.layer[tl:], pooler, 41)
-        #
-        # self.bbc = self.get_task_layers(encoder.layer[tl:], pooler, 5)
-        #
-        # self.task_layers = {'hp': self.hp, 'ag':self.ag, 'bbc':self.bbc}
+        self.few_shot_head = nn.Sequential(nn.Linear(768, conf.hidden), nn.ReLU())
 
 
     def get_task_layers(self, encoder_layers, pooling_layer, num_classes):
@@ -73,9 +69,8 @@ class MultitaskBert(nn.Module):
 
 
     def forward(self, batch):
-        datasets = self.config.train_sets
         outputs = []
-        for dataset in datasets:
+        for dataset in self.datasets:
             out = self.embedding(batch[dataset]['txt'])
             out = self.apply_shared_encoders(out)
             out = self.apply_task_layers(out, self.task_layers[dataset])
@@ -97,7 +92,7 @@ class Args():
         self.seed = 20
         self.max_text_length = -1
         self.sample = 100
-        self.train_sets = ['hp', 'ag', 'dbpedia']
+        self.train_sets = "hp,ag,dbpedia"
         self.hidden = 192
 
 if __name__ == "__main__":

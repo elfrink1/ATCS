@@ -103,7 +103,7 @@ class DataLoader():
         if os.path.exists(self.set_path):
             self.load_data()
         else:
-            os.mkdir(self.config.cache_path)
+            os.makedirs(self.config.cache_path, exist_ok=True)
             process_fn()
             shutil.rmtree(self.config.cache_path) # remove cache
 
@@ -114,7 +114,7 @@ class DataLoader():
     def save_data(self, name, data):
         self.task.name = name
         self.task.data = data
-        os.mkdir(self.set_path)
+        os.makedirs(self.set_path, exist_ok=True)
         torch.save(self.task, os.path.join(self.set_path, 'train.pt'))
 
 
@@ -160,7 +160,7 @@ class DataLoader():
     def process_bbc(self):
         data = {i: [] for i in range(5)}
         cats = {'business': 0, 'entertainment': 1, 'politics': 2, 'sport': 3, 'tech': 4}
-        with open(os.path.join(self.set_path + '_raw', 'BBC News Train.csv')) as f:
+        with open(os.path.join('Data/BBC/Train/BBC News Train.csv')) as f:
             reader = csv.reader(f, delimiter=',')
             next(reader)
             for row in reader:

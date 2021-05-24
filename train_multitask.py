@@ -1,40 +1,44 @@
-from pytorch_lightning.accelerators import accelerator
 import torch
 import os
-
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils import data
+import torch.optim as optim
 
 from multitask_data import LoadMultitaskData, MergeMultitaskData
 from multitask_model import MultitaskBert
 from multitask_trainer import MultitaskTrainer
+import proto_data
+import proto_utils
 
 from config import get_args
+from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
 
-def train_multitask(loader, conf):
-    """ Train the BERT model in a multitask framework with all datasets.
-        The model that performs best on the validation set is saved."""
+def train_multitask(conf, train_loader, test_data, writer):
+    model = MultitaskTrainer(conf).to(conf.device)
 
-    trainer = pl.Trainer(default_root_dir=os.path.join(conf.path, conf.optimizer, conf.name),
-                         callbacks=ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc"),
-                         gpus=1 if "gpu" in str(conf.device) else 0,
-                         max_epochs=conf.max_epochs,
-                         progress_bar_refresh_rate=1 if conf.progress_bar else 0, accelerator='ddp')
+    if conf.optimizer == "Adam":
+        optimizer = optim.Adam(model.parameters(), lr=conf.lr)
+    elif conf.optimizer == "SGD":
+        optimizer = optim.SGD(model.parameters(), lr=conf.lr)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 80], gamma=0.1)
 
-    # Not really clear what these do, but are often disabled.
-    trainer.logger._log_graph = False
-    trainer.logger._default_hp_metric = None
+    for epoch in tqdm(range(conf.max_epochs), desc="Epoch"):
+        train_acc, train_loss = model.train_model(train_data, optimizer)
+        writer.add_scalar("Train loss", train_loss, epoch)
+        writer.add_scalar("Train accuracy", train_acc, epoch)
+        if epoch % 5 == 0:
+            batch = proto_utils.get_test_batch(conf, test_data)
+            val_acc, val_loss = model.eval_model(batch)
+            writer.add_scalar("Val loss", val_loss, epoch)
+            writer.add_scalar("Val accuracy", val_acc, epoch)
+        scheduler.step()
 
-    pl.seed_everything(conf.seed)
-    model = MultitaskTrainer(conf.name, model_hparams={},
-                             optimizer_name=conf.optimizer,
-                             optimizer_hparams={"lr" : conf.lr},
-                             conf=conf)
-    trainer.fit(model, loader['train'], loader['val'])
-    test_result = trainer.test(model, loader['test'])
+    print("Testing multitask model...")
+    batch = proto_utils.get_test_batch(conf, test_data)
+    test_acc, test_loss = model.eval_model(batch)
+    writer.add_scalar("Test loss", test_loss, epoch)
+    writer.add_scalar("Test accuracy", test_acc, epoch)
 
-    return model, test_result
 
 if __name__ == "__main__":
     conf = get_args()
@@ -42,16 +46,13 @@ if __name__ == "__main__":
     print(conf)
     print("-----------------------------------")
 
+    print("Loading data...")
     multitask_data = LoadMultitaskData(conf)
     multitask_train = MergeMultitaskData(multitask_data.train)
-    multitask_val = MergeMultitaskData(multitask_data.val)
-    multitask_test = MergeMultitaskData(multitask_data.test)
+    train_data = data.DataLoader(multitask_train, batch_size=conf.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=conf.num_workers) if multitask_train != None else None
+    test_data = proto_data.DataLoader(conf, conf.test_set)
 
-    loader = {
-        'train' : data.DataLoader(multitask_train, batch_size=conf.batch_size, shuffle=True, pin_memory=True, drop_last=True, num_workers=4) if multitask_train != None else None,
-        'val'   : data.DataLoader(multitask_val, batch_size=conf.batch_size, shuffle=False, drop_last=False, num_workers=conf.num_workers) if multitask_val != None else None,
-        'test'  : data.DataLoader(multitask_test, batch_size=conf.batch_size, shuffle=False, drop_last=False, num_workers=conf.num_workers) if multitask_test != None else None
-    }
-
-    model, results = train_multitask(loader, conf)
-    print("Results:", results)
+    print("Training multitask model...")
+    save_name = f'./{conf.path}/runs/{conf.name}'
+    writer = SummaryWriter(save_name)
+    train_multitask(conf, train_data, test_data, writer)
