@@ -21,6 +21,7 @@ def train_multitask(conf, train_loader, test_data, writer):
     elif conf.optimizer == "SGD":
         optimizer = optim.SGD(model.parameters(), lr=conf.lr)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 80], gamma=0.1)
+    best_val_acc = 0
 
     for epoch in tqdm(range(conf.max_epochs), desc="Epoch"):
         train_acc, train_loss = model.train_model(train_data, optimizer)
@@ -31,9 +32,21 @@ def train_multitask(conf, train_loader, test_data, writer):
             val_acc, val_loss = model.eval_model(batch)
             writer.add_scalar("Val loss", val_loss, epoch)
             writer.add_scalar("Val accuracy", val_acc, epoch)
+            if val_acc > best_val_acc:
+                torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'val_loss': val_loss,
+            'val_acc': val_acc,
+            }, f'./{conf.path}/checkpoints/{conf.name}')
         scheduler.step()
 
     print("Testing multitask model...")
+    checkpoint = torch.load('Model/best_multitask.pt')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
     batch = proto_utils.get_test_batch(conf, test_data)
     test_acc, test_loss = model.eval_model(batch)
     writer.add_scalar("Test loss", test_loss, epoch)

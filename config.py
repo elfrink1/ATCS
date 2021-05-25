@@ -1,10 +1,11 @@
 from argparse import ArgumentParser
 from re import M
+import os
 
 arg_defaults = {
-    "path" : "models/bert_multitask",
-    "data_path" : './Data/',
-    "cache_path" : './Cache/',
+    "path" : os.path.join("models", "bert_multitask"),
+    "data_path" : os.path.join('.', 'Data'),
+    "cache_path" : os.path.join('.', 'Cache'),
     "optimizer" : "Adam",
     "lr" : 0.001,
     "max_epochs" : 100,
