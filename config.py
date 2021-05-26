@@ -1,11 +1,14 @@
 from argparse import ArgumentParser
 from re import M
+import os
 
 arg_defaults = {
-    "path" : "models/bert_multitask",
+    "path" : os.path.join("models", "bert_multitask"),
+    "data_path" : os.path.join('.', 'Data'),
+    "cache_path" : os.path.join('.', 'Cache'),
     "optimizer" : "Adam",
     "lr" : 0.001,
-    "max_epochs" : 100,
+    "max_epochs" : 10,
     "finetuned_layers" : 0,
     "task_layers" : 1,
     "tokenizer" : "BERT",
@@ -15,7 +18,19 @@ arg_defaults = {
     "max_text_length": -1,
     "sample" : None,
     'progress_bar' : True,
-    "num_workers" : 4
+    "num_workers" : 4,
+    "gpus": 1,
+    "train_sets" : "hp,ag,dbpedia",
+    "test_set" : 'bbc',
+    "hidden" : 192,
+    "max_tokens" : 256,
+    "inner_steps" : 5,
+    "inner_lr" : 0.001,
+    "shot" : 5,
+    "eval_perm" : 3,
+    "eval_way" : 4,
+    "class_eval" : 32,
+    "query_batch": 10
 }
 
 def get_args():
@@ -50,7 +65,35 @@ def get_args():
     parser.add_argument("--sample", type=int, default=arg_defaults["sample"],
                         help="Amount of datapoints used in each split in a dataset. Recommended for testing." + help_text_default.format(arg_defaults["sample"]))
     parser.add_argument("--num_workers", type=int, default=arg_defaults['num_workers'],
-                        help="The number of workers/processes on the cpu" + help_text_default.format(arg_defaults["max_text_length"]))
+                        help="The number of workers/processes on the cpu" + help_text_default.format(arg_defaults["num_workers"]))
+    parser.add_argument("--gpus", type=int, default=arg_defaults['gpus'],
+                        help="The number of GPU's used" + help_text_default.format(arg_defaults["gpus"]))
+    parser.add_argument("--train_sets", type=str, default=arg_defaults['train_sets'],
+                        help="Comma separated names of datasets used to train multitask model." + help_text_default.format(arg_defaults['train_sets']))
+    parser.add_argument("--test_set", type=str, default=arg_defaults['test_set'],
+                        help="name of dataset used for few shot evaluation" + help_text_default.format(arg_defaults['test_set']))
+    parser.add_argument("--hidden", type=int, default=arg_defaults['hidden'],
+                        help="number of hidden units of the few shot head" + help_text_default.format(arg_defaults['hidden']))
+    parser.add_argument("--max_tokens", type=int, default=arg_defaults['max_tokens'],
+                        help="maximum number of tokens for the bert tokenizer (used when building data for few shot evaluation)" + help_text_default.format(arg_defaults['max_tokens']))
+    parser.add_argument("--inner_steps", type=int, default=arg_defaults['inner_steps'],
+                        help="number of steps in inner loop" + help_text_default.format(arg_defaults['inner_steps']))
+    parser.add_argument("--inner_lr", type=int, default=arg_defaults['inner_lr'],
+                        help="learning rate of inner loop" + help_text_default.format(arg_defaults['inner_lr']))
+    parser.add_argument("--shot", type=int, default=arg_defaults['shot'],
+                        help="number of shots in few shot evaluation" + help_text_default.format(arg_defaults['shot']))
+    parser.add_argument("--query_batch", type=int, default=arg_defaults['query_batch'],
+                        help="size of query batches" + help_text_default.format(arg_defaults['query_batch']))
+    parser.add_argument("--eval_perm", type=int, default=arg_defaults['eval_perm'],
+                        help="number of support sets in few shot evaluation" + help_text_default.format(arg_defaults['eval_perm']))
+    parser.add_argument("--eval_way", type=int, default=arg_defaults['eval_way'],
+                        help="number of 'ways' in few shot evaluation" + help_text_default.format(arg_defaults['eval_way']))
+    parser.add_argument("--class_eval", type=int, default=arg_defaults['class_eval'],
+                        help="amount of query examples per class in few shot evaluation" + help_text_default.format(arg_defaults['class_eval']))
+    parser.add_argument("--data_path", type=str, default=arg_defaults['data_path'],
+                        help="path to store data for few shot evaluation" + help_text_default.format(arg_defaults['data_path']))
+    parser.add_argument("--cache_path", type=str, default=arg_defaults['cache_path'],
+                        help="path to store data temporarily" + help_text_default.format(arg_defaults['cache_path']))
 
     args = parser.parse_args()
     return args
