@@ -14,4 +14,4 @@ module load Anaconda3/2020.02
 
 source activate atcs2
 
-srun python -u train_multitask.py run1_ag --finetuned_layers=-1 --num_workers=12 --batch_size=25 --lr=0.01 --train_sets=hp,dbpedia,ng --test_set=ag --max_epochs=10
+srun python -u train_multitask.py run1_ag --finetuned_layers=-1 --num_workers=12 --batch_size=25 --lr=0.001 --train_sets=hp,dbpedia,ng --test_set=ag --max_epochs=10
