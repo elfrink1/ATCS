@@ -13,7 +13,7 @@ arg_defaults = {
     "task_layers" : 1,
     "tokenizer" : "BERT",
     "batch_size" : 64,
-    "device" : "gpu",
+    "device" : "cuda",
     "seed" : 20,
     "max_text_length": -1,
     "sample" : None,
@@ -55,7 +55,7 @@ def get_args():
     parser.add_argument("--batch_size", type=int, default=arg_defaults["batch_size"],
                         help="size of the batches"  + help_text_default.format(arg_defaults["batch_size"]))
     parser.add_argument("--device", type=str, default=arg_defaults["device"],
-                        choices=["cpu", "gpu"], help="the device to use"  + help_text_default.format(arg_defaults["device"]))
+                        choices=["cpu", "cuda"], help="the device to use"  + help_text_default.format(arg_defaults["device"]))
     parser.add_argument("--seed", type=int, default=arg_defaults["seed"],
                         help="the random seed used by pytorch lightning"  + help_text_default.format(arg_defaults["seed"]))
     parser.add_argument("--progress_bar", action="store_true", default=False,
