@@ -9,6 +9,7 @@ from multitask_data import LoadMultitaskData, MergeMultitaskData
 class MultitaskBert(nn.Module):
     def __init__(self, conf):
         super(MultitaskBert, self).__init__()
+        self.conf = conf
         self.bert = BertModel.from_pretrained("bert-base-uncased")
         self.datasets = datasets = conf.train_sets.split(',')
         self.loss_weights = {}
@@ -44,10 +45,10 @@ class MultitaskBert(nn.Module):
 
 
     def get_task_layers(self, encoder_layers, pooling_layer, num_classes):
-        encoders = copy.deepcopy(encoder_layers)
-        pooler = copy.deepcopy(pooling_layer)
-        mlp = nn.Linear(768, num_classes)
-        task_layers = nn.ModuleList([*encoders, pooler, mlp])
+        encoders = copy.deepcopy(encoder_layers).to(self.conf.device)
+        pooler = copy.deepcopy(pooling_layer).to(self.conf.device)
+        mlp = nn.Linear(768, num_classes).to(self.conf.device)
+        task_layers = nn.ModuleList([*encoders, pooler, mlp]).to(self.conf.device)
         return task_layers
 
 

@@ -22,11 +22,12 @@ class MultitaskTrainer(nn.Module):
         self.model.train()
 
         for batch in train_data:
-            out_ = self.model(batch)
+            gpubatch = {key : {"txt": value["txt"].to(self.config.device), "label": value["label"].to(self.config.device)} for key, value in batch.items()}
+            out_ = self.model(gpubatch)
             losses, accs = [], []
             for i, dataset in enumerate(self.datasets):
-                loss = self.model.loss_weights[dataset] * self.loss_module(out_[i], batch[dataset]["label"])
-                acc = (out_[i].argmax(dim=-1) == batch[dataset]["label"]).float().mean()
+                loss = self.model.loss_weights[dataset] * self.loss_module(out_[i], gpubatch[dataset]["label"])
+                acc = (out_[i].argmax(dim=-1) == gpubatch[dataset]["label"]).float().mean()
                 accs.append(acc.item())
                 losses.append(loss)
             losses = torch.stack(losses)

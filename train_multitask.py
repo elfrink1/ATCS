@@ -15,6 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 def train_multitask(conf, train_loader, test_data, writer):
     model = MultitaskTrainer(conf).to(conf.device)
+    os.makedirs(f'{conf.path}/checkpoints/', exist_ok=True)
 
     if conf.optimizer == "Adam":
         optimizer = optim.Adam(model.parameters(), lr=conf.lr)
@@ -25,13 +26,13 @@ def train_multitask(conf, train_loader, test_data, writer):
 
     for epoch in tqdm(range(conf.max_epochs), desc="Epoch"):
         train_acc, train_loss = model.train_model(train_data, optimizer)
-        writer.add_scalar("Train loss", train_loss, epoch)
-        writer.add_scalar("Train accuracy", train_acc, epoch)
+        writer.add_scalar("Train loss", train_loss.item(), epoch)
+        writer.add_scalar("Train accuracy", train_acc.item(), epoch)
         if epoch % 5 == 0:
             batch = proto_utils.get_test_batch(conf, test_data)
             val_acc, val_loss = model.eval_model(batch)
-            writer.add_scalar("Val loss", val_loss, epoch)
-            writer.add_scalar("Val accuracy", val_acc, epoch)
+            writer.add_scalar("Val loss", val_loss.item(), epoch)
+            writer.add_scalar("Val accuracy", val_acc.item(), epoch)
             if val_acc > best_val_acc:
                 torch.save({
             'epoch': epoch,
@@ -39,18 +40,19 @@ def train_multitask(conf, train_loader, test_data, writer):
             'optimizer_state_dict': optimizer.state_dict(),
             'val_loss': val_loss,
             'val_acc': val_acc,
-            }, f'./{conf.path}/checkpoints/{conf.name}')
+            }, f'{conf.path}/checkpoints/{conf.name}.ckpt')
         scheduler.step()
 
     print("Testing multitask model...")
-    checkpoint = torch.load('Model/best_multitask.pt')
+    checkpoint = torch.load(f'{conf.path}/checkpoints/{conf.name}.ckpt')
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     batch = proto_utils.get_test_batch(conf, test_data)
     test_acc, test_loss = model.eval_model(batch)
-    writer.add_scalar("Test loss", test_loss, epoch)
-    writer.add_scalar("Test accuracy", test_acc, epoch)
+    print("Test acc", test_acc, "Test loss", test_loss)
+    writer.add_scalar("Test loss", test_loss.item())
+    writer.add_scalar("Test accuracy", test_acc.item())
 
 
 if __name__ == "__main__":
