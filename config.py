@@ -8,7 +8,7 @@ arg_defaults = {
     "cache_path" : os.path.join('.', 'Cache'),
     "optimizer" : "Adam",
     "lr" : 0.001,
-    "max_epochs" : 100,
+    "max_epochs" : 10,
     "finetuned_layers" : 0,
     "task_layers" : 1,
     "tokenizer" : "BERT",
