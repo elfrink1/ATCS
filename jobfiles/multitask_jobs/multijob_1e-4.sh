@@ -9,9 +9,15 @@
 
 module purge
 module load 2020
-module load Python
-module load Anaconda3/2020.02
+#module load Anaconda3/2020.02
 
 source activate atcs2
 
-srun python -u train_multitask.py run1_lr0.0001 --finetuned_layers=5 --num_workers=12 --batch_size=25 --lr=0.0001 --train_sets=hp,dbpedia,ng --test_set=bbc --max_epochs=10
+srun python -u train_multitask.py run1_lr0.0001 \
+                                --finetuned_layers=5 \
+                                --num_workers=12 \
+                                --batch_size=25 \
+                                --lr=0.0001 \
+                                --train_sets=hp,dbpedia,ng \
+                                --test_set=bbc \
+                                --max_epochs=20 
