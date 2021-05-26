@@ -53,6 +53,8 @@ def train_multitask(conf, train_loader, test_data, writer):
     print("Test acc", test_acc, "Test loss", test_loss)
     writer.add_scalar("Test loss", test_loss.item())
     writer.add_scalar("Test accuracy", test_acc.item())
+    writer.flush()
+    writer.close()
 
 
 if __name__ == "__main__":
