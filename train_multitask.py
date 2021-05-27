@@ -13,7 +13,7 @@ from config import get_args
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
-def train_multitask(conf, train_loader, test_data, writer):
+def train_multitask(conf, train_data, test_data, writer):
     model = MultitaskTrainer(conf).to(conf.device)
     os.makedirs(f'{conf.path}/checkpoints/', exist_ok=True)
 
@@ -21,7 +21,7 @@ def train_multitask(conf, train_loader, test_data, writer):
         optimizer = optim.Adam(model.parameters(), lr=conf.lr)
     elif conf.optimizer == "SGD":
         optimizer = optim.SGD(model.parameters(), lr=conf.lr)
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 80], gamma=0.1)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[2, 6], gamma=0.1)
     best_val_acc = 0
 
     for epoch in tqdm(range(conf.max_epochs), desc="Epoch"):
