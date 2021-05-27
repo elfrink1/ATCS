@@ -14,10 +14,11 @@ module load 2020
 source activate atcs2
 
 srun python -u train_multitask.py run1_lr0.0001 \
-                                --finetuned_layers=5 \
-                                --num_workers=12 \
-                                --batch_size=25 \
+                                --finetuned_layers=-1 \
+                                --num_workers=3 \
+                                --batch_size=10 \
                                 --lr=0.0001 \
                                 --train_sets=hp,dbpedia,ng \
                                 --test_set=bbc \
-                                --max_epochs=20 
+                                --max_epochs=40 \
+                                --sample 15000
