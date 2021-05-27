@@ -18,10 +18,10 @@ class MultitaskTrainer(nn.Module):
         self.datasets = conf.train_sets.split(',')
 
 
-    def train_model(self, train_data, optimizer):
+    def train_model(self, train_data, optimizer, writer):
         self.model.train()
 
-        for batch in train_data:
+        for batch_idx, batch in enumerate(train_data):
             gpubatch = {key : {"txt": value["txt"].to(self.config.device), "label": value["label"].to(self.config.device)} for key, value in batch.items()}
             out_ = self.model(gpubatch)
             losses, accs = [], []
@@ -33,6 +33,8 @@ class MultitaskTrainer(nn.Module):
             losses = torch.stack(losses)
             train_loss = torch.sum(losses)
             train_acc = torch.mean(torch.tensor(accs))
+
+            writer.add_scalar("Train loss", train_loss.item(), batch_idx)
 
             optimizer.zero_grad()
             train_loss.backward()

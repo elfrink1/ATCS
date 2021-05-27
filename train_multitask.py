@@ -25,8 +25,7 @@ def train_multitask(conf, train_data, test_data, writer):
     best_val_acc = 0
 
     for epoch in tqdm(range(conf.max_epochs), desc="Epoch"):
-        train_acc, train_loss = model.train_model(train_data, optimizer)
-        writer.add_scalar("Train loss", train_loss.item(), epoch)
+        train_acc, train_loss = model.train_model(train_data, optimizer, writer)
         writer.add_scalar("Train accuracy", train_acc.item(), epoch)
         if epoch % 5 == 0:
             batch = proto_utils.get_test_batch(conf, test_data)
