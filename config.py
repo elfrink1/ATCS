@@ -20,7 +20,7 @@ arg_defaults = {
     'progress_bar' : True,
     "num_workers" : 4,
     "gpus": 1,
-    "train_sets" : "hp,ag,dbpedia",
+    "train_sets" : "hp,ng,dbpedia",
     "test_set" : 'bbc',
     "hidden" : 192,
     "max_tokens" : 256,
