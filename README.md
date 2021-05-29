@@ -2,7 +2,9 @@
 Research project: Mitigating Label Mismatches across Datasets using Meta-Learning (document classification)
 
 ## Installation
-The environment can be created with conda env create -f atcs2.yml
+The environment can be created with 
+
+```conda env create -f atcs2.yml```
 
 If there is difficulty with installing the huggingface datasets, do it manually with conda install -c huggingface -c conda-forge datasets
 
