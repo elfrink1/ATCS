@@ -81,7 +81,7 @@ The Multitask model can be finetuned with mutliple train sets. Provide the train
                           [--cache_path CACHE_PATH]
                           name``
 
-By default, the model will be trained on the HuffPost, DBpedia14 and the 20NewsGroup datasets (i.e. `--train_sets=hp,dbpedia,ng`). 
+By default, the model will be trained on the HuffPost News Category, DBpedia14 and the 20NewsGroup datasets (i.e. `--train_sets=hp,dbpedia,ng`). 
 For more information run `python train_multitask.py -h`
                           
 To perform few-shot evaluation with the model, specify only one dataset in the argument `--test_set` (e.g. 'bbc' for the BBC dataset) Then run `evaluate_mutlitask.py` which can ce balled as follows:
@@ -110,3 +110,5 @@ Make sure to fill in `name` the name of the checkpoint path of the mutlitask mod
 To run the ProtoMAML algorithm, run `protomaml.py` which can be called as follows:
 
 ```python protomaml.py```
+
+ProtoMAML has been trained with the same sets of train sets as the multitask model (i.e. hp, dbpedia and ng) and evaluated on the same test sets (i.e. ag and bbc)
