@@ -24,4 +24,3 @@ def get_train_batch4(config, datasets):
 
 def get_test_batch(config, dataset):
     return [dataset.task.sample_eval_episode(config) for i in range(config.eval_perm)]
-

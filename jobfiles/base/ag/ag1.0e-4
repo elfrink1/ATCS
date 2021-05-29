@@ -1,0 +1,21 @@
+#!/bin/bash
+#SBATCH -p gpu_titanrtx_shared_course
+#SBATCH --ntasks=1
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=ag1.0e-4
+#SBATCH --cpus-per-task=3
+#SBATCH --time=08:00:00
+#SBATCH --mem=32000M
+#SBATCH --output=slurm_output_%A.out
+
+module purge
+module load 2019
+module load NCCL/2.5.6-CUDA-10.1.243
+
+# Your job starts in the directory where you call sbatch
+cd $HOME/atcs2
+
+# Activate your environment
+source activate atcs2
+
+srun python -u train_bert.py ag1.0e-4 ag 4 --lr 0.00001 --max_text_length 512 --batch_size 32 --finetuned_layers -1 

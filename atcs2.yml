@@ -9,3 +9,4 @@ dependencies:
   - huggingface::transformers
   - huggingface::datasets
   - kaggle
+  - scikit-learn

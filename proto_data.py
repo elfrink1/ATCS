@@ -13,7 +13,7 @@ import proto_utils
 class Episode():
     def __init__(self, n_classes, support, query):
         self.n_classes = n_classes
-        self.support = self.Set(support, n_classes)    
+        self.support = self.Set(support, n_classes)
         self.query = self.Set(query, n_classes)
         self.query.shuffle()
 
@@ -34,10 +34,10 @@ class Episode():
 
             for i in range(0, self.len, batch_size):
                 tb = self.text[self.idx[i:min(i + batch_size, self.len)]].tolist()
-                lb = self.labels[self.idx[i:min(i + batch_size, self.len)]]            
+                lb = self.labels[self.idx[i:min(i + batch_size, self.len)]]
                 if tokenize == True:
                     tb = proto_utils.tokenize(config, tb)
-    
+
                 yield tb.to(config.device), lb.to(config.device)
 
 
@@ -72,32 +72,32 @@ class DataLoader():
             self.data = {}
 
         def sample_episode(self, config):
-            way = random.randint(config.min_way, min(config.max_way, len(self.data))) # amount of ways, min_ways <= n <= min(max_ways, n_classes)        
+            way = random.randint(config.min_way, min(config.max_way, len(self.data))) # amount of ways, min_ways <= n <= min(max_ways, n_classes)
             class_ids = random.sample(range(len(self.data)), way) # sample classes, n = way
             query, support = [], []
-            
+
             for class_id in class_ids: # for all classes
-                sample_ids = random.sample(range(len(self.data[class_id])), config.query_size + config.shot) # number of sampled ids = n_query + n_support              
+                sample_ids = random.sample(range(len(self.data[class_id])), config.query_size + config.shot) # number of sampled ids = n_query + n_support
                 support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[:config.shot]]) # class_support = first sampled ids, n = shot
                 query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[config.shot:]]) # class_query = last sampled ids, n = query_size
-            
-            return Episode(way, support, query)      
+
+            return Episode(way, support, query)
 
         def sample_eval_episode(self, config):
             way = min(config.eval_way, len(self.data))
             class_eval = config.class_eval
             if config.class_eval == -1:
                 class_eval = min([len(self.data[data_class]) for data_class in self.data]) - config.shot
-            
+
             class_ids = random.sample(range(len(self.data)), way)
             query, support = [], []
-   
+
             for class_id in class_ids:
                 sample_ids = random.sample(range(len(self.data[class_id])), class_eval + config.shot) #class_eval != query_size
-                support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[:config.shot]]) 
-                query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[config.shot:]]) 
+                support.extend([self.data[class_id][sample_id] for sample_id in sample_ids[:config.shot]])
+                query.extend([self.data[class_id][sample_id] for sample_id in sample_ids[config.shot:]])
 
-            return Episode(way, support, query)       
+            return Episode(way, support, query)
 
 
     # Download, process, save, remove raw dataset
@@ -128,58 +128,58 @@ class DataLoader():
             text = example['headline'] + ' ' + example['short_description']
             data[example['category_num']].append(text)
         self.save_data('hp', data)
-    
+
 
     def process_ag(self):
-        data = {i: [] for i in range(4)} 
-        dataset = load_dataset('ag_news', split='train', cache_dir=self.config.cache_path) 
+        data = {i: [] for i in range(4)}
+        dataset = load_dataset('ag_news', split='train', cache_dir=self.config.cache_path)
         for example in dataset:
             text = example['text']
             text = text.replace('\\', ' ')
             data[example['label']].append(text)
-        self.save_data('ag', data) 
+        self.save_data('ag', data)
 
 
     def process_yahoo(self):
-        data = {i: [] for i in range(10)} 
-        dataset = load_dataset('yahoo_answers_topics', split='train', cache_dir=self.config.cache_path) 
+        data = {i: [] for i in range(10)}
+        dataset = load_dataset('yahoo_answers_topics', split='train', cache_dir=self.config.cache_path)
         for example in dataset:
             text = example['question_title'] + ' ' + example['question_content'] + ' ' + example['best_answer']
             #text = text.replace('\n', '')
-            data[example['topic']].append(text)  
-        self.save_data('yahoo', data)  
+            data[example['topic']].append(text)
+        self.save_data('yahoo', data)
 
 
     def process_dbpedia(self):
-        data = {i: [] for i in range(14)} 
+        data = {i: [] for i in range(14)}
         dataset = load_dataset('dbpedia_14', split='train', cache_dir=self.config.cache_path)
         for example in dataset:
             text = example['title'] + ' ' + example['content']
             data[example['label']].append(text)
-        self.save_data('dbpedia', data)  
+        self.save_data('dbpedia', data)
 
 
-    def process_bbc(self): 
-        data = {i: [] for i in range(5)} 
-        cats = {'business': 0, 'entertainment': 1, 'politics': 2, 'sport': 3, 'tech': 4}      
-        with open(os.path.join(self.set_path + '_raw', 'BBC News Train.csv')) as f:
+    def process_bbc(self):
+        data = {i: [] for i in range(5)}
+        cats = {'business': 0, 'entertainment': 1, 'politics': 2, 'sport': 3, 'tech': 4}
+        with open(os.path.join('Data/BBC/Train/BBC News Train.csv')) as f:
             reader = csv.reader(f, delimiter=',')
             next(reader)
             for row in reader:
                 text = row[1].replace('\n', ' ')
                 data[cats[row[2]]].append(text)
-        self.save_data('bbc', data)  
+        self.save_data('bbc', data)
 
-    def process_ng(self): 
+    def process_ng(self):
         data = {i: [] for i in range(20)}
         cats = {'18828_alt.atheism': 0, '18828_comp.graphics': 1, '18828_comp.os.ms-windows.misc': 2, '18828_comp.sys.ibm.pc.hardware': 3,
             '18828_comp.sys.mac.hardware': 4, '18828_comp.windows.x': 5, '18828_misc.forsale': 6, '18828_rec.autos': 7, '18828_rec.motorcycles': 8,
             '18828_rec.sport.baseball': 9, '18828_rec.sport.hockey': 10, '18828_sci.crypt': 11, '18828_sci.electronics':  12, '18828_sci.med': 13, '18828_sci.space': 14,
             '18828_soc.religion.christian': 15, '18828_talk.politics.guns': 16, '18828_talk.politics.mideast': 17, '18828_talk.politics.misc': 18,
-            '18828_talk.religion.misc': 19} 
+            '18828_talk.religion.misc': 19}
         for (cat, label) in cats.items():
             dataset = load_dataset('newsgroup', cat, split='train', cache_dir=self.config.cache_path)
             for example in dataset:
                 text = example['text'][20:].replace('\n', ' ')
                 data[label].append(text)
-        self.save_data('ng', data)  
+        self.save_data('ng', data)
