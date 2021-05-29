@@ -169,4 +169,15 @@ class DataLoader():
         self.save_data('bbc', data)
 
     def process_ng(self):
-        raise Exception("newsgroups not implemented")
+        data = {i: [] for i in range(20)}
+        cats = {'18828_alt.atheism': 0, '18828_comp.graphics': 1, '18828_comp.os.ms-windows.misc': 2, '18828_comp.sys.ibm.pc.hardware': 3,
+            '18828_comp.sys.mac.hardware': 4, '18828_comp.windows.x': 5, '18828_misc.forsale': 6, '18828_rec.autos': 7, '18828_rec.motorcycles': 8,
+            '18828_rec.sport.baseball': 9, '18828_rec.sport.hockey': 10, '18828_sci.crypt': 11, '18828_sci.electronics':  12, '18828_sci.med': 13, '18828_sci.space': 14,
+            '18828_soc.religion.christian': 15, '18828_talk.politics.guns': 16, '18828_talk.politics.mideast': 17, '18828_talk.politics.misc': 18,
+            '18828_talk.religion.misc': 19} 
+        for (cat, label) in cats.items():
+            dataset = load_dataset('newsgroup', cat, split='train', cache_dir=self.config.cache_path)
+            for example in dataset:
+                text = example['text'][20:].replace('\n', ' ')
+                data[label].append(text)
+        self.save_data('ng', data)  
