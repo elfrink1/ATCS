@@ -106,6 +106,8 @@ To perform few-shot evaluation with the model, specify only one dataset in the a
 
 Make sure to fill in `name` the name of the checkpoint path of the mutlitask model without the extension `.ckpt`. The checkpoint path of the multitask model can be downloaded here: https://drive.google.com/file/d/1pjCplwjC4f4yMZMEXGsaoyTcxCkxzPt0/view?usp=sharing
 
+To calculate the mean accuracies for the multitask model run the script `test_multitask.sh` in your terminal.
+
 ## ProtoMAML
 To run the ProtoMAML algorithm, run `protomaml.py` which can be called as follows:
 
