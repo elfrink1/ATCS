@@ -1,4 +1,4 @@
-# ATCS
+# Mitigating Label mismatches across datasets with Meta-Learning
 Research project: Mitigating Label Mismatches across Datasets using Meta-Learning (document classification)
 
 ## Installation
