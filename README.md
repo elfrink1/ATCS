@@ -6,7 +6,9 @@ The environment can be created with
 
 ```conda env create -f atcs2.yml```
 
-If there is difficulty with installing the huggingface datasets, do it manually with conda install -c huggingface -c conda-forge datasets
+If there is difficulty with installing the huggingface datasets, do it manually with 
+
+```conda install -c huggingface -c conda-forge datasets```
 
 ## Code hygiene
 Please keep a separate branch for developing each of the three tasks. Once your functionality is completely tested and ready (not v0.3, but v1.0), merge it into the main branch. If you want to add a new functionality to a branch that requires (major) changes to existing code, create a new branch, finish your thing, merge it back.
