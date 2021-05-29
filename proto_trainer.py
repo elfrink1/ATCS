@@ -16,9 +16,9 @@ class ProtoTrainer(nn.Module):
         self.loss_module = nn.CrossEntropyLoss()
 
 
-    def meta_train(self, batch):
-        grad_sum = None
+    def meta_train(self, batch, outer_opt):
         accs, losses = [], []
+        outer_opt.zero_grad()
 
         for episode in batch:
             episode_model, weight, bias = self.proto_task(episode.support) # create task specific model
@@ -31,31 +31,29 @@ class ProtoTrainer(nn.Module):
 
                 proto_grad = torch.autograd.grad(loss, [p for p in self.model.parameters() if p.requires_grad], retain_graph=True)
                 meta_grad = torch.autograd.grad(loss, [p for p in episode_model.parameters() if p.requires_grad])
+                grads = [mg + pg for (mg, pg) in zip(meta_grad, proto_grad)]
 
-                grad = [mg + pg for (mg, pg) in zip(meta_grad, proto_grad)]
-
-                if grad_sum is None:
-                    grad_sum = [g.detach() for g in grad]
-                else:
-                    grad_sum = [gs + g.detach() for (gs, g) in zip(grad_sum, grad)]
+                for param, grad in zip([p for p in self.model.parameters() if p.requires_grad], grads):
+                    if param.grad == None:
+                        param.grad = grad.detach()
+                    else:
+                        param.grad += grad.detach()
 
                 # logging
                 accs.extend((out.argmax(dim=-1) == labels).float().detach().cpu())
                 losses.append(loss.item())
 
-        # update meta learner
-        for param, grad in zip([p for p in self.model.parameters() if p.requires_grad], grad_sum):
-            with torch.no_grad():
-                param.data -= self.config.outer_lr * (grad / len(losses))
-
+        for param in [p for p in self.model.parameters() if p.requires_grad]:
+            param.grad /= len(losses)
+        outer_opt.step()
 
         train_acc = torch.mean(torch.tensor(accs)).cpu()
         train_loss = torch.mean(torch.tensor(losses)).cpu()
+
         return train_acc, train_loss
 
 
     def eval_model(self, batch):
-        torch.cuda.empty_cache()
         accs, losses = [], []
 
         for episode in batch:
@@ -70,65 +68,53 @@ class ProtoTrainer(nn.Module):
 
         eval_acc = torch.mean(torch.tensor(accs))
         eval_loss = torch.mean(torch.tensor(losses))
+
         return eval_acc, eval_loss
 
 
 
-
-
-
-
-
-
     def proto_task(self, support):
-        episode_model = copy.deepcopy(self.model) #STEP 2
+        episode_model = copy.deepcopy(self.model)
         episode_model.zero_grad()
-        inner_opt = torch.optim.SGD([p for p in episode_model.parameters() if p.requires_grad], lr=self.config.inner_lr)
 
         # init prototype parameters
         proto_W, proto_b = self.prototype(support)
         weight = proto_W.clone().detach().requires_grad_(True)
         bias = proto_b.clone().detach().requires_grad_(True)
 
+        params = [p for p in episode_model.parameters() if p.requires_grad] + [weight, bias]
+        #params = [weight, bias]
+        inner_opt = torch.optim.SGD(params, lr=self.config.inner_lr)
+
         # inner loop
-        for i in range(self.config.inner_steps): #STEP 5
-            #support.shuffle() #reshuffles support set for each inner update
+        for i in range(self.config.inner_steps):
+
             inner_opt.zero_grad()
-            text, labels = next(support.get_batch(self.config))
-
-            out = episode_model(text)
-            out = self.output_layer(out, weight, bias)
-            loss = self.loss_module(out, labels)
-
-            [wg, bg] = torch.autograd.grad(loss, [weight, bias], retain_graph=True)
-            loss.backward()
-
-            # update weights
-            with torch.no_grad():
-                weight.data -= self.config.inner_lr * wg
-                bias.data -= self.config.inner_lr * bg
+            for j, (text, labels) in enumerate(support.get_batch(self.config, batch_size=self.config.sup_batch)):
+                out = episode_model(text)
+                out = self.output_layer(out, weight, bias)
+                loss = self.loss_module(out, labels)
+                loss.backward(inputs=params)
             inner_opt.step()
+        inner_opt.zero_grad()
 
-        episode_model.zero_grad()
         # add prototypes back to the computation graph
-        weight = 2 * proto_W + (weight - 2 * proto_W).detach() #STEP 6
+        weight = 2 * proto_W + (weight - 2 * proto_W).detach()
         bias = 2 * proto_b + (bias - 2 * proto_b).detach()
 
         return episode_model, weight, bias
 
 
-
     def prototype(self, support):
-        sup_batch = support.len
-        n_classes = support.n_classes
+        sup_batch = support.len if self.config.sup_batch == -1 else self.config.sup_batch
 
-        text, _ = next(support.get_batch(self.config))
-        emb = self.model(text)
-        c_k = torch.stack([torch.mean(emb[i:i + self.config.shot, :], dim=0) for i in range(0, self.config.shot * n_classes, self.config.shot)])
+        all_emb = torch.cat([self.model(text) for (text, labels) in support.get_batch(self.config, batch_size=sup_batch)])
+        c_k = torch.stack([torch.mean(all_emb[i: i+self.config.shot, :], dim=0) for i in range(0, self.config.shot*support.n_classes, self.config.shot)])
 
         W = 2 * c_k
         b = -torch.linalg.norm(c_k, dim=1)**2
         support.shuffle()
+
         return W, b
 
 
